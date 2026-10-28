@@ -5,7 +5,9 @@ import { get } from './core/store.js';
 import { sfx } from './core/sound.js';
 import { parse, trace } from './games/reacteur/engine.js';
 import { drawBoard } from './games/reacteur/render.js';
-import { LEVELS } from './games/reacteur/levels.js';
+import { MAIN, SAVE_KEY } from './games/reacteur/game.js';
+import { SAVE_KEY as FLAIR_KEY, COUNT as FLAIR_COUNT } from './games/flair/game.js';
+import { SAVE_KEY as CS_KEY, COUNT as CS_COUNT } from './games/chaussette/game.js';
 
 let booted = false;
 
@@ -27,9 +29,7 @@ export function mount(root) {
 
   const missions = h('section', { class: 'missions', id: 'missions' },
     h('h2', {}, 'Missions'),
-    h('div', { class: 'mission-list' }, reacteurCard(), rivauxCard(),
-      lockedCard('Flair', 'Une enquête menée au nez.', ICONS.nose),
-      lockedCard('Opération chaussette', 'Voler sans se faire voir.', ICONS.sock)),
+    h('div', { class: 'mission-list' }, reacteurCard(), rivauxCard(), flairCard(), chaussetteCard()),
   );
 
   const hero = h('section', { class: 'hero' },
@@ -55,9 +55,11 @@ export function mount(root) {
 }
 
 function reacteurCard() {
-  const save = get('reacteur', { best: {} });
-  const done = Object.keys(save.best || {}).length;
-  const progress = done === 0 ? `${LEVELS.length} niveaux` : done >= LEVELS.length ? 'Tous les niveaux réussis' : `${done} sur ${LEVELS.length} réussis`;
+  const save = get(SAVE_KEY, { best: {} });
+  const best = save.best || {};
+  const done = MAIN.filter((_, n) => best[n] != null).length;
+  const bonus = [MAIN.length, MAIN.length + 1].filter(n => best[n] != null).length;
+  const progress = done === 0 ? `${MAIN.length} niveaux et 2 bonus` : done < MAIN.length ? `${done} sur ${MAIN.length} réussis` : bonus < 2 ? `Terminé, bonus ${bonus} sur 2` : 'Tout est réussi, bonus compris';
   return h('a', { class: 'mission playable m-reacteur', href: '#/reacteur' },
     h('div', { class: 'm-art' }, h('canvas', { 'aria-hidden': 'true' })),
     h('div', { class: 'm-body' },
@@ -79,6 +81,57 @@ function rivauxCard() {
       h('h3', {}, 'Rivaux Marvel'),
       h('p', {}, 'Soixante secondes, deux choix à chaque fois, et un rival qui ne lâche rien.'),
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, best ? `Record ${fmt(best)}` : 'Aucun duel joué'), h('span', { class: 'm-play' }, 'Jouer'))));
+}
+
+function progressOf(key, count) {
+  const best = (get(key, {}).best) || {};
+  const done = Object.keys(best).length;
+  return done === 0 ? null : done >= count ? 'Tout est résolu' : `${done} sur ${count}`;
+}
+
+function flairCard() {
+  const p = progressOf(FLAIR_KEY, FLAIR_COUNT);
+  // une piste de ronds qui file, et une fausse piste de triangles qui bifurque
+  const dots = [], tris = [];
+  for (let k = 0; k < 16; k++) {
+    const t = k / 15, x = 40 + t * 320, y = 150 - Math.sin(t * 3.1) * 70 - t * 30;
+    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(3.4 + t * 1.6).toFixed(1)}" fill="#ffc94d" opacity="${(0.35 + t * 0.6).toFixed(2)}"/>`);
+  }
+  for (let k = 0; k < 8; k++) {
+    const t = k / 7, x = 180 + t * 150, y = 92 + t * 70;
+    tris.push(`<polygon points="${x},${y - 5} ${x + 5},${y + 4} ${x - 5},${y + 4}" fill="#ff7aa8" opacity="${(0.25 + t * 0.4).toFixed(2)}"/>`);
+  }
+  const art = `<svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs><radialGradient id="flglow" cx="20%" cy="75%" r="70%"><stop offset="0" stop-color="#2a2048"/><stop offset="1" stop-color="#0a1311" stop-opacity="0"/></radialGradient></defs>
+    <rect width="400" height="220" fill="url(#flglow)"/>
+    <g fill="#0e1f19">${[30, 110, 250, 330, 380].map((x, i) => `<circle cx="${x}" cy="${i % 2 ? 30 : 205}" r="${36 + i * 4}"/>`).join('')}</g>
+    ${tris.join('')}${dots.join('')}
+  </svg>`;
+  return h('a', { class: 'mission playable m-flair', href: '#/flair' },
+    h('div', { class: 'm-art', html: art }),
+    h('div', { class: 'm-body' },
+      h('h3', {}, 'Flair'),
+      h('p', {}, 'Une enquête au nez dans la forêt de nuit. Suis la bonne odeur, ignore les saucisses.'),
+      h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, p ? `Affaires : ${p}` : `${FLAIR_COUNT} affaires`), h('span', { class: 'm-play' }, p ? 'Continuer' : 'Jouer'))));
+}
+
+function chaussetteCard() {
+  const p = progressOf(CS_KEY, CS_COUNT);
+  const planks = [...Array(9)].map((_, k) => `<rect x="0" y="${k * 26}" width="400" height="25" fill="${k % 2 ? '#2b2521' : '#2f2823'}"/>`).join('');
+  const art = `<svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    ${planks}
+    <defs><radialGradient id="cscone" cx="0" cy="0.5" r="1"><stop offset="0" stop-color="#ffd696" stop-opacity=".45"/><stop offset="1" stop-color="#ffd696" stop-opacity="0"/></radialGradient></defs>
+    <polygon points="92,110 300,30 300,190" fill="url(#cscone)"/>
+    <g transform="translate(80 110)"><ellipse cx="0" cy="0" rx="11" ry="17" fill="#c0533b"/><circle cx="2" cy="0" r="9" fill="#3a2a20"/></g>
+    <rect x="250" y="150" width="90" height="56" rx="8" fill="#8c6340"/>
+    <g transform="translate(330 70) rotate(-25)"><path d="M-6 -16h12v18q12 2 10 10q-4 6-14 2l-8-6z" fill="#e9e4da"/><rect x="-6" y="-16" width="12" height="4" fill="#c0533b"/></g>
+  </svg>`;
+  return h('a', { class: 'mission playable m-chaussette', href: '#/chaussette' },
+    h('div', { class: 'm-art', html: art }),
+    h('div', { class: 'm-body' },
+      h('h3', {}, 'Opération chaussette'),
+      h('p', {}, 'Voler toutes les chaussettes de l’appartement sans croiser le regard de Florian. Puis rentrer au panier, l’air de rien.'),
+      h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, p ? `Niveaux : ${p}` : `${CS_COUNT} niveaux`), h('span', { class: 'm-play' }, p ? 'Continuer' : 'Jouer'))));
 }
 
 function lockedCard(title, line, icon) {

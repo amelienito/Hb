@@ -59,29 +59,37 @@ function dirIndex(dx, dy) { return dx === 1 ? 0 : dx === -1 ? 1 : dy === -1 ? 2 
 export function trace(g) {
   const { w, h, cells } = g;
   const seen = new Set(), lit = new Set(), alarmHit = new Set(), visited = new Set();
+  // distance du premier passage du faisceau sur chaque cœur et chaque alarme
+  const litDist = new Map(), alarmDist = new Map();
+  let maxDist = 0;
   const paths = [];
-  const stack = g.emitters.map(e => ({ x: e.x, y: e.y, dx: e.dx, dy: e.dy, pts: [[e.x, e.y]] }));
+  // offsets[k] = distance (en cases) depuis l'émetteur au début du tracé k, pour l'animation
+  const offsets = [];
+  const stack = g.emitters.map(e => ({ x: e.x, y: e.y, dx: e.dx, dy: e.dy, pts: [[e.x, e.y]], d0: 0 }));
   let safety = 0;
   while (stack.length && safety++ < 400) {
     const b = stack.pop();
     let { x, y, dx, dy } = b;
     const pts = b.pts;
+    const d0 = b.d0;
+    let run = 0;
     for (;;) {
+      run++;
       const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= w || ny >= h) { pts.push([x + dx * 0.5, y + dy * 0.5]); break; }
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) { pts.push([x + dx * 0.5, y + dy * 0.5]); maxDist = Math.max(maxDist, d0 + run); break; }
       x = nx; y = ny;
       const i = y * w + x, c = cells[i];
       const key = i * 4 + dirIndex(dx, dy);
-      if (seen.has(key)) { pts.push([x, y]); break; }
+      if (seen.has(key)) { pts.push([x, y]); maxDist = Math.max(maxDist, d0 + run); break; }
       seen.add(key);
       visited.add(i);
-      if (c.t === 'wall' || c.t === 'emitter') { pts.push([x - dx * 0.5, y - dy * 0.5]); break; }
-      if (c.t === 'alarm') { alarmHit.add(i); pts.push([x, y]); break; }
-      if (c.t === 'target') { lit.add(i); continue; }
+      if (c.t === 'wall' || c.t === 'emitter') { pts.push([x - dx * 0.5, y - dy * 0.5]); maxDist = Math.max(maxDist, d0 + run); break; }
+      if (c.t === 'alarm') { alarmHit.add(i); if (!alarmDist.has(i)) alarmDist.set(i, d0 + run); pts.push([x, y]); maxDist = Math.max(maxDist, d0 + run); break; }
+      if (c.t === 'target') { lit.add(i); if (!litDist.has(i)) litDist.set(i, d0 + run); continue; }
       if (c.t === 'ball') {
         pts.push([x, y]);
-        stack.push({ x, y, dx: dy, dy: dx, pts: [[x, y]] });
-        stack.push({ x, y, dx: -dy, dy: -dx, pts: [[x, y]] });
+        stack.push({ x, y, dx: dy, dy: dx, pts: [[x, y]], d0: d0 + run });
+        stack.push({ x, y, dx: -dy, dy: -dx, pts: [[x, y]], d0: d0 + run });
         break;
       }
       const k = mirrorKind(c);
@@ -91,9 +99,10 @@ export function trace(g) {
       }
     }
     paths.push(pts);
+    offsets.push(d0);
   }
   const solved = g.targets.every(i => lit.has(i)) && alarmHit.size === 0;
-  return { paths, lit, alarmHit, visited, solved };
+  return { paths, offsets, lit, alarmHit, visited, solved, litDist, alarmDist, maxDist };
 }
 
 export function isSolved(g) { return trace(g).solved; }

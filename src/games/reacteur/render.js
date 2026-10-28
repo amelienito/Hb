@@ -25,6 +25,8 @@ function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
 
 export function drawBoard(ctx, g, tr, v) {
   const { cs, ox, oy, t = 0 } = v;
+  const reach = v.reach == null ? Infinity : v.reach;
+  const reached = (map, i) => !map || !map.has(i) || map.get(i) <= reach + 0.01;
   const W = g.w * cs, H = g.h * cs;
   const cx = i => ox + ((i % g.w) + 0.5) * cs;
   const cy = i => oy + (Math.floor(i / g.w) + 0.5) * cs;
@@ -52,11 +54,12 @@ export function drawBoard(ctx, g, tr, v) {
     else if (c.t === 'socket') drawSocket(ctx, x, y, cs, c.s === 0);
     else if (c.t === 'target') drawCoreBase(ctx, x, y, cs);
     else if (c.t === 'ball') drawBall(ctx, x, y, cs);
-    else if (c.t === 'alarm') drawAlarm(ctx, x, y, cs, tr.alarmHit.has(i), t);
+    else if (c.t === 'alarm') drawAlarm(ctx, x, y, cs, tr.alarmHit.has(i) && reached(tr.alarmDist, i), t);
   }
 
-  // faisceau
-  drawBeam(ctx, tr.paths, cs, ox, oy, t, v.boost || 0);
+  // ancien trajet qui s'efface, puis nouveau faisceau qui se propage depuis l'émetteur
+  if (v.ghost && v.ghost.alpha > 0.01) drawBeam(ctx, v.ghost.paths, null, Infinity, cs, ox, oy, t, 0, v.ghost.alpha * 0.55);
+  drawBeam(ctx, tr.paths, tr.offsets, reach, cs, ox, oy, t, v.boost || 0, 1);
 
   // pièces au-dessus du faisceau
   for (let i = 0; i < g.cells.length; i++) {
@@ -67,7 +70,7 @@ export function drawBoard(ctx, g, tr, v) {
     const sc = v.scales && v.scales.has(i) ? v.scales.get(i) : 1;
     drawMirror(ctx, cx(i), cy(i), cs, ang, c.t === 'fixed', sc, v.pressed === i);
   }
-  for (const i of g.targets) drawCore(ctx, cx(i), cy(i), cs, tr.lit.has(i), t, v.boost || 0);
+  for (const i of g.targets) drawCore(ctx, cx(i), cy(i), cs, tr.lit.has(i) && reached(tr.litDist, i), t, v.boost || 0);
 
   if (v.focus != null) {
     ctx.save();
@@ -223,8 +226,35 @@ function drawMirror(ctx, x, y, cs, angDeg, fixed, scale, pressed) {
   ctx.restore();
 }
 
-function drawBeam(ctx, paths, cs, ox, oy, t, boost) {
+// Tronque un tracé à la distance `reach` (en cases) depuis l'émetteur.
+function clip(path, d0, reach) {
+  if (reach === Infinity) return path;
+  let left = reach - d0;
+  if (left <= 0) return null;
+  const out = [path[0]];
+  for (let k = 1; k < path.length; k++) {
+    const [ax, ay] = path[k - 1], [bx, by] = path[k];
+    const len = Math.abs(bx - ax) + Math.abs(by - ay);
+    if (len <= left) { out.push(path[k]); left -= len; continue; }
+    const f = left / len;
+    out.push([ax + (bx - ax) * f, ay + (by - ay) * f, true]);
+    return out;
+  }
+  return out;
+}
+
+function drawBeam(ctx, paths, offsets, reach, cs, ox, oy, t, boost, alpha) {
   const P = p => [ox + (p[0] + 0.5) * cs, oy + (p[1] + 0.5) * cs];
+  const shown = [];
+  paths.forEach((p, k) => { const c = clip(p, offsets ? offsets[k] : 0, reach); if (c && c.length >= 2) shown.push(c); });
+  if (!shown.length) return;
+  const stroke = () => {
+    for (const path of shown) {
+      ctx.beginPath();
+      path.forEach((p, k) => { const [x, y] = P(p); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.stroke();
+    }
+  };
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -233,31 +263,25 @@ function drawBeam(ctx, paths, cs, ox, oy, t, boost) {
     [cs * 0.2, 0.16 + boost * 0.1],
     [cs * 0.08, 0.55],
   ];
-  for (const [lw, a] of layers) {
-    ctx.strokeStyle = `rgba(${C.beam},${a})`; ctx.lineWidth = lw;
-    for (const path of paths) {
-      if (path.length < 2) continue;
-      ctx.beginPath();
-      path.forEach((p, k) => { const [x, y] = P(p); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-      ctx.stroke();
+  for (const [lw, a] of layers) { ctx.strokeStyle = `rgba(${C.beam},${a * alpha})`; ctx.lineWidth = lw; stroke(); }
+  ctx.strokeStyle = `rgba(240,254,255,${0.95 * alpha})`; ctx.lineWidth = Math.max(1.2, cs * 0.028);
+  stroke();
+  if (alpha >= 1) {
+    // particules qui filent dans le sens du faisceau
+    ctx.setLineDash([cs * 0.05, cs * 0.5]);
+    ctx.lineDashOffset = -t * cs * 0.004;
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = cs * 0.06;
+    stroke();
+    ctx.setLineDash([]);
+    // tête du faisceau pendant la propagation
+    for (const path of shown) {
+      const last = path[path.length - 1];
+      if (!last[2]) continue;
+      const [x, y] = P(last);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, cs * 0.5);
+      g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.3, `rgba(${C.beam},.5)`); g.addColorStop(1, `rgba(${C.beam},0)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, cs * 0.5, 0, Math.PI * 2); ctx.fill();
     }
-  }
-  ctx.strokeStyle = 'rgba(240,254,255,.95)'; ctx.lineWidth = Math.max(1.2, cs * 0.028);
-  for (const path of paths) {
-    if (path.length < 2) continue;
-    ctx.beginPath();
-    path.forEach((p, k) => { const [x, y] = P(p); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-    ctx.stroke();
-  }
-  // particules qui filent le long du faisceau
-  ctx.setLineDash([cs * 0.05, cs * 0.5]);
-  ctx.lineDashOffset = -t * cs * 0.004;
-  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = cs * 0.06;
-  for (const path of paths) {
-    if (path.length < 2) continue;
-    ctx.beginPath();
-    path.forEach((p, k) => { const [x, y] = P(p); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-    ctx.stroke();
   }
   ctx.restore();
 }

@@ -5,6 +5,8 @@ const ROUTES = {
   '': () => import('./hub.js'),
   reacteur: () => import('./games/reacteur/game.js'),
   rivaux: () => import('./games/rivaux/game.js'),
+  chaussette: () => import('./games/chaussette/game.js'),
+  flair: () => import('./games/flair/game.js'),
 };
 
 const app = document.getElementById('app');

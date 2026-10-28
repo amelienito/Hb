@@ -3,35 +3,57 @@
 import { h, backButton, soundButton, sheet, fmt, buzz, reducedMotion } from '../../core/ui.js';
 import { get, set } from '../../core/store.js';
 import { sfx } from '../../core/sound.js';
-import { FILMS, HEROES, FAMILIES } from './data.js';
+import { FILMS, HEROES, FAMILIES, MCU_DEBUTS, CAST } from './data.js';
 
 const DURATION = 60000;
 const PENALTY = 5000;
 
+const FEM = new Set(['Gwyneth Paltrow', 'Tessa Thompson', 'Cate Blanchett', 'Scarlett Johansson', 'Florence Pugh', 'Tatiana Maslany', 'Letitia Wright', 'Brie Larson', 'Iman Vellani', 'Elizabeth Olsen', 'Zoe Saldaña', 'Karen Gillan', 'Vanessa Kirby']);
 const money = m => (m >= 1000 ? (m / 1000).toFixed(2).replace('.', ',') + ' Md$' : m + ' M$');
 
 const CATS = {
   box: {
-    w: 0.4, label: 'Box-office mondial',
+    w: 0.15, label: 'Box-office mondial',
     items: FILMS.map(f => ({ name: f[0], kind: 'Film, ' + f[1], fam: f[2], v: f[3], show: money(f[3]), sub: 'Au box-office ?' })),
     ask: up => (up ? 'Lequel a rapporté <em>le plus</em> ?' : 'Lequel a rapporté <em>le moins</em> ?'),
     short: up => (up ? 'Plus gros box-office' : 'Plus petit box-office'),
     far: (a, b, s) => Math.max(a.v, b.v) / Math.min(a.v, b.v) >= Math.max(1.12, 1.9 - s * 0.08),
   },
   dur: {
-    w: 0.25, label: 'Durée en salle',
+    w: 0.13, label: 'Durée en salle',
     items: FILMS.map(f => ({ name: f[0], kind: 'Film, ' + f[1], fam: f[2], v: f[4], show: f[4] + ' min', sub: 'Combien de temps ?' })),
     ask: up => (up ? 'Lequel est <em>le plus long</em> ?' : 'Lequel est <em>le plus court</em> ?'),
     short: up => (up ? 'Plus long' : 'Plus court'),
     far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(6, 28 - s * 2.5),
   },
   comic: {
-    w: 0.35, label: 'Première apparition en comics',
+    w: 0.2, label: 'Première apparition en comics',
     // pour « en premier », la plus petite année gagne : on inverse le signe
     items: HEROES.map(c => ({ name: c[0], kind: 'Personnage', fam: c[3], v: c[1], show: String(c[1]), small: c[2], sub: 'Première apparition ?' })),
     ask: up => (up ? 'Qui est apparu <em>le plus tard</em> ?' : 'Qui est apparu <em>en premier</em> ?'),
     short: up => (up ? 'Apparu plus tard' : 'Apparu en premier'),
     far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 14 - s * 1.2),
+  },
+  mcu: {
+    w: 0.2, label: 'Arrivée dans le MCU',
+    items: MCU_DEBUTS.map(c => ({ name: c[0], kind: 'Personnage', fam: c[3], v: c[1], show: String(c[1]), small: c[2], sub: 'Arrivé dans le MCU quand ?' })),
+    ask: up => (up ? 'Qui est arrivé <em>le plus tard</em> dans le MCU ?' : 'Qui est arrivé <em>en premier</em> dans le MCU ?'),
+    short: up => (up ? 'Arrivé plus tard au cinéma' : 'Arrivé en premier au cinéma'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 5 - s * 0.4),
+  },
+  cast: {
+    w: 0.17, label: 'Le casting',
+    items: CAST.map(c => ({ name: c[0], kind: c[2], fam: c[3], v: -c[1], show: 'né' + (FEM.has(c[0]) ? 'e' : '') + ' en ' + c[1], sub: 'Quel âge ?' })),
+    ask: up => (up ? 'Qui est <em>le plus âgé</em> ?' : 'Qui est <em>le plus jeune</em> ?'),
+    short: up => (up ? 'Plus âgé' : 'Plus jeune'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(2, 12 - s),
+  },
+  year: {
+    w: 0.15, label: 'Sortie en salle',
+    items: FILMS.map(f => ({ name: f[0], kind: 'Film', fam: f[2], v: -f[1], show: String(f[1]), sub: 'Sorti quand ?' })),
+    ask: up => (up ? 'Lequel est sorti <em>en premier</em> ?' : 'Lequel est sorti <em>le plus tard</em> ?'),
+    short: up => (up ? 'Sorti en premier' : 'Sorti plus tard'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 6 - s * 0.5),
   },
 };
 
@@ -100,7 +122,7 @@ export function mount(root) {
     body.append(h('div', { class: 'rv-intro' },
       h('div', { class: 'rv-intro-art', 'aria-hidden': 'true', html: `<svg viewBox="0 0 100 100">${EMBLEMS.ring}</svg>` }),
       h('h1', {}, 'Rivaux', h('br'), 'Marvel'),
-      h('p', { class: 'lead' }, 'Deux noms, une question, une seconde pour trancher. Box-office, durées, premières apparitions en comics.'),
+      h('p', { class: 'lead' }, 'Deux noms, une question, une seconde pour trancher. Films, comics, casting, box-office : tout y passe.'),
       h('ul', { class: 'rv-rules' },
         h('li', {}, h('b', {}, '60 s'), 'pour marquer un maximum de points.'),
         h('li', {}, h('b', {}, '×5'), 'au bout d’une longue série. Plus tu enchaînes, plus c’est serré.'),
@@ -148,12 +170,18 @@ export function mount(root) {
       h('div', { class: 'rv-q' }, catEl, askEl),
       cardsEl);
 
+    let lastKeys = [];
     function pickQuestion() {
-      const r = Math.random();
-      let acc = 0, key = 'box';
-      for (const [k, c] of Object.entries(CATS)) { acc += c.w; if (r <= acc) { key = k; break; } }
+      let key = 'box';
+      for (let tries = 0; tries < 10; tries++) {
+        const total = Object.values(CATS).reduce((a, c) => a + c.w, 0);
+        let r = Math.random() * total, acc = 0;
+        for (const [k, c] of Object.entries(CATS)) { acc += c.w; if (r <= acc) { key = k; break; } }
+        if (!lastKeys.includes(key)) break;
+      }
+      lastKeys = [...lastKeys, key].slice(-2);
       const cat = CATS[key];
-      const up = Math.random() < (key === 'comic' ? 0.4 : 0.6);
+      const up = Math.random() < (key === 'comic' || key === 'mcu' ? 0.4 : 0.6);
       for (let tries = 0; tries < 80; tries++) {
         const a = cat.items[Math.floor(Math.random() * cat.items.length)];
         if (recent.includes(a.name) && tries < 60) continue;

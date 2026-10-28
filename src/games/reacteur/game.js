@@ -1,5 +1,5 @@
 // Réacteur : faire pivoter les miroirs pour allumer tous les cœurs sans toucher les capteurs.
-// Talya fait le travail : elle trotte jusqu'à la colonne touchée.
+// 8 niveaux principaux, puis 2 niveaux bonus au choix. Talya trotte jusqu'à la colonne touchée.
 import { h, backButton, soundButton, sheet, ICONS, buzz, reducedMotion } from '../../core/ui.js';
 import { get, set } from '../../core/store.js';
 import { sfx } from '../../core/sound.js';
@@ -8,12 +8,20 @@ import { parse, trace } from './engine.js';
 import { drawBoard, targetAngle } from './render.js';
 import { LEVELS } from './levels.js';
 
+// 8 niveaux principaux + 2 bonus (choisis parmi les plus corsés)
+export const MAIN = LEVELS.slice(0, 8).map((L, n) => ({ ...L, label: String(n + 1).padStart(2, '0') }));
+export const BONUS = [LEVELS[9], LEVELS[11]].map((L, n) => ({ ...L, bonus: true, label: 'B' + (n + 1) }));
+export const ALL = [...MAIN, ...BONUS];
+export const SAVE_KEY = 'reacteur-v2';
+
+const SPEED = 22; // vitesse de propagation du faisceau, en cases par seconde
+
 const HINTS = {
   0: 'Touche un miroir pour le faire pivoter. Allume chaque cœur.',
+  1: 'À chaque coup, le faisceau repart de l’émetteur : regarde où il file.',
   3: 'Un socle vide accepte un miroir. Touche-le pour en poser un.',
   4: 'La balle de Talya divise le faisceau en deux.',
   5: 'Les capteurs rouges coupent tout. Le faisceau ne doit pas les toucher.',
-  8: 'Les miroirs vissés ne bougent pas. Fais avec.',
 };
 
 const WIN_LINES = [
@@ -26,14 +34,20 @@ const WIN_LINES = [
 
 export function mount(root) {
   root.classList.add('g-screen', 'reacteur');
-  const save = get('reacteur', { best: {}, last: 0 });
+  const save = get(SAVE_KEY, { best: {}, last: 0 });
   save.best = save.best || {};
-  const unlockedUpTo = () => Math.min(LEVELS.length - 1, Object.keys(save.best).reduce((m, k) => Math.max(m, +k + 1), 0));
+  const mainDone = () => MAIN.filter((_, n) => save.best[n] != null).length;
+  const isOpen = n => {
+    if (n < MAIN.length) return n === 0 || save.best[n - 1] != null || save.best[n] != null;
+    return save.best[MAIN.length - 1] != null;
+  };
 
-  let li = Math.min(save.last || 0, unlockedUpTo());
+  let li = isOpen(save.last || 0) ? (save.last || 0) : 0;
   let g, tr, moves, history, angles, scales, pressed = null, won = false, focus = null;
-  let talya = { x: 0, tx: 0, face: 1, run: 0, hop: 0, hopV: 0, ears: 1, wag: 0 };
-  let litBefore = new Set(), alarmBefore = false, boost = 0;
+  const talya = { x: 0, tx: 0, face: 1, run: 0, hop: 0, hopV: 0, ears: 1, wag: 0 };
+  let boost = 0;
+  let reveal = { t0: 0, done: true }, ghost = null, pending = [];
+  let alarmShown = false;
 
   const levelEl = h('div', { class: 'rx-level' });
   const movesEl = h('b', {}, '0');
@@ -75,18 +89,20 @@ export function mount(root) {
   }
 
   function load(n) {
-    li = n; save.last = n; set('reacteur', save);
-    const L = LEVELS[n];
+    li = n; save.last = n; set(SAVE_KEY, save);
+    const L = ALL[n];
     g = parse(L.rows);
     moves = 0; history = []; won = false; pressed = null; focus = null;
     angles = new Map(); scales = new Map();
     for (const i of g.mut) angles.set(i, targetAngle(g.cells[i]));
     tr = trace(g);
-    litBefore = new Set(tr.lit); alarmBefore = tr.alarmHit.size > 0;
+    ghost = null; pending = [];
+    reveal = { t0: performance.now(), done: false };
+    alarmShown = false;
     levelEl.innerHTML = '';
-    levelEl.append(h('small', {}, L.name), String(n + 1).padStart(2, '0'));
+    levelEl.append(h('small', {}, L.bonus ? 'Bonus : ' + L.name : L.name), L.label);
     parEl.textContent = L.par;
-    hintEl.textContent = HINTS[n] || '';
+    hintEl.textContent = HINTS[n] || (L.bonus ? 'Niveau bonus. Prends ton temps.' : '');
     sizeCanvas();
     talya.x = talya.tx = ox + cs * 0.9;
     talya.face = 1;
@@ -95,8 +111,7 @@ export function mount(root) {
 
   function refresh() {
     movesEl.textContent = moves;
-    undoBtn.disabled = history.length === 0;
-    root.classList.toggle('alarm-on', tr.alarmHit.size > 0);
+    undoBtn.disabled = history.length === 0 || won;
   }
 
   function act(i) {
@@ -132,15 +147,22 @@ export function mount(root) {
     after();
   }
 
+  // Recalcule le faisceau et relance sa propagation depuis l'émetteur.
   function after() {
+    const prev = tr;
     tr = trace(g);
+    ghost = { paths: prev.paths, alpha: 1 };
+    reveal = { t0: performance.now(), done: false };
+    alarmShown = false;
+    // les sons suivent le faisceau : un cœur sonne quand le laser l'atteint
+    pending = [];
     let n = 0;
-    for (const t of tr.lit) if (!litBefore.has(t)) { sfx.lit(tr.lit.size + n); n++; }
-    const alarmNow = tr.alarmHit.size > 0;
-    if (alarmNow && !alarmBefore) { sfx.alarm(); buzz(40); talya.ears = 0.2; }
-    litBefore = new Set(tr.lit); alarmBefore = alarmNow;
+    for (const [i, d] of tr.litDist) if (!prev.lit.has(i)) pending.push({ d, fn: () => sfx.lit(tr.lit.size + n++) });
+    const wasAlarm = prev.alarmHit.size > 0;
+    for (const [, d] of tr.alarmDist) pending.push({ d, fn: () => { if (!alarmShown) { alarmShown = true; if (!wasAlarm) { sfx.alarm(); buzz(40); } talya.ears = 0.2; } } });
+    pending.sort((a, b) => a.d - b.d);
+    if (tr.solved) { won = true; pending.push({ d: tr.maxDist, fn: win }); }
     refresh();
-    if (tr.solved) win();
   }
 
   function walkTo(i) {
@@ -150,47 +172,61 @@ export function mount(root) {
   }
 
   function win() {
-    won = true;
-    const L = LEVELS[li];
+    const L = ALL[li];
     const prev = save.best[li];
     if (prev == null || moves < prev) save.best[li] = moves;
-    set('reacteur', save);
+    set(SAVE_KEY, save);
     sfx.win();
     buzz(30);
     talya.hopV = 7;
-    setTimeout(() => showWin(L, prev), reducedMotion() ? 200 : 1100);
+    refresh();
+    setTimeout(() => showWin(L, prev), reducedMotion() ? 200 : 1000);
   }
 
   function showWin(L, prev) {
     const perfect = moves <= L.par;
-    const last = li === LEVELS.length - 1;
-    const line = WIN_LINES[li % WIN_LINES.length];
+    const endOfMain = li === MAIN.length - 1;
+    const bonusLeft = BONUS.map((_, k) => MAIN.length + k).filter(n => n !== li && save.best[n] == null);
     let close;
-    const next = () => { close(); load(li + 1); };
-    const again = () => { close(); load(li); };
+    const go = n => { close(); load(n); };
+    const actions = [];
+    if (endOfMain || L.bonus) {
+      bonusLeft.forEach(n => actions.push(h('button', { class: 'btn', type: 'button', onclick: () => go(n) }, 'Bonus : ' + ALL[n].name)));
+      actions.push(h('a', { class: 'btn' + (bonusLeft.length ? ' ghost' : ''), href: '#/' }, 'Retour aux missions'));
+    } else {
+      actions.push(h('button', { class: 'btn', type: 'button', onclick: () => go(li + 1) }, 'Niveau suivant'));
+    }
+    actions.push(h('button', { class: 'btn ghost', type: 'button', onclick: () => go(li) }, perfect ? 'Rejouer' : `Rejouer pour viser ${L.par}`));
+    let title = perfect ? 'Au millimètre.' : 'Réacteur stabilisé.';
+    let line = WIN_LINES[li % WIN_LINES.length];
+    if (endOfMain) { title = 'Réacteur rallumé.'; line = 'Les 8 circuits tiennent. Deux niveaux bonus t’attendent, si tu as encore des neurones.'; }
+    else if (L.bonus && !bonusLeft.length) { line = 'Bonus terminés. Talya peut retourner dormir sur le canapé.'; }
     close = sheet([
-      h('h2', {}, perfect ? 'Au millimètre.' : 'Réacteur stabilisé.'),
-      h('p', {}, last ? 'Tous les circuits sont rétablis. Talya peut retourner dormir sur le canapé.' : line),
+      h('h2', {}, title),
+      h('p', {}, line),
       h('div', { class: 'stat-row' },
         h('div', { class: 'stat' }, h('b', {}, moves), h('span', {}, 'coups')),
         h('div', { class: 'stat' }, h('b', {}, L.par), h('span', {}, 'par')),
         prev != null ? h('div', { class: 'stat' }, h('b', {}, Math.min(prev, moves)), h('span', {}, 'record')) : null),
-      h('div', { class: 'actions' },
-        last ? h('a', { class: 'btn', href: '#/' }, 'Retour aux missions') : h('button', { class: 'btn', type: 'button', onclick: next }, 'Niveau suivant'),
-        h('button', { class: 'btn ghost', type: 'button', onclick: again }, perfect ? 'Rejouer' : `Rejouer pour viser ${L.par}`)),
+      h('div', { class: 'actions' }, actions),
     ], 'rx-sheet');
   }
 
   function openLevels() {
-    const max = unlockedUpTo();
     let close;
-    const grid = h('div', { class: 'lv-grid' }, LEVELS.map((L, n) => {
+    const btn = (L, n) => {
       const b = save.best[n];
-      const cls = ['lv', b != null ? 'done' : '', b != null && b <= L.par ? 'perfect' : '', n === li ? 'current' : ''].join(' ');
-      return h('button', { class: cls, type: 'button', disabled: n > max, 'aria-label': `Niveau ${n + 1}, ${L.name}`, onclick: () => { close(); load(n); } }, n + 1);
-    }));
-    close = sheet([h('h2', {}, 'Niveaux'), h('p', {}, 'Un point bleu : niveau réussi en dessous du par.'), grid,
-      h('div', { class: 'actions' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, 'Fermer'))], 'rx-sheet');
+      const cls = ['lv', b != null ? 'done' : '', b != null && b <= L.par ? 'perfect' : '', n === li ? 'current' : '', L.bonus ? 'bonus' : ''].join(' ');
+      return h('button', { class: cls, type: 'button', disabled: !isOpen(n), 'aria-label': `${L.bonus ? 'Bonus' : 'Niveau'} ${L.label}, ${L.name}`, onclick: () => { close(); load(n); } }, L.bonus ? L.label : n + 1);
+    };
+    close = sheet([
+      h('h2', {}, 'Niveaux'),
+      h('p', {}, `${mainDone()} sur ${MAIN.length} réussis. Un point bleu : réussi au par ou mieux.`),
+      h('div', { class: 'lv-grid' }, MAIN.map((L, n) => btn(L, n))),
+      h('p', { class: 'lv-bonus-title' }, isOpen(MAIN.length) ? 'Bonus, dans l’ordre que tu veux' : 'Bonus : termine le niveau 8 pour les ouvrir'),
+      h('div', { class: 'lv-grid' }, BONUS.map((L, k) => btn(L, MAIN.length + k))),
+      h('div', { class: 'actions' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, 'Fermer')),
+    ], 'rx-sheet');
   }
 
   // --- saisie ---
@@ -228,25 +264,28 @@ export function mount(root) {
   function frame(t) {
     if (!alive) return;
     const dt = Math.min(0.05, (t - last) / 1000); last = t;
-    // rotations adoucies
     for (const [i, a] of angles) {
       const cur = displayAngles.has(i) ? displayAngles.get(i) : a;
       displayAngles.set(i, reducedMotion() ? a : cur + (a - cur) * Math.min(1, dt * 22));
     }
     for (const [i, s] of scales) { const n = s + (1 - s) * Math.min(1, dt * 16); if (n > 0.995) scales.delete(i); else scales.set(i, n); }
-    boost += ((won ? 1 : 0) - boost) * Math.min(1, dt * 4);
-    // Talya
+
+    // propagation du faisceau
+    const reach = reducedMotion() ? Infinity : ((t - reveal.t0) / 1000) * SPEED;
+    while (pending.length && pending[0].d <= reach) pending.shift().fn();
+    if (ghost) ghost.alpha = Math.max(0, ghost.alpha - dt * 2.6);
+    root.classList.toggle('alarm-on', alarmShown);
+
+    boost += ((won && !pending.length ? 1 : 0) - boost) * Math.min(1, dt * 4);
     const d = talya.tx - talya.x;
     if (Math.abs(d) > 1) { talya.x += Math.sign(d) * Math.min(Math.abs(d), dt * cs * 7); talya.run += dt * 18; }
     talya.hop += talya.hopV; talya.hopV -= dt * 40;
-    if (talya.hop <= 0) { talya.hop = 0; talya.hopV = won && !reducedMotion() ? (talya.hopV < -1 ? 4 : 0) : 0; }
-    talya.ears += (1 - talya.ears) * Math.min(1, dt * (tr.alarmHit.size ? 0.4 : 3));
+    if (talya.hop <= 0) { talya.hop = 0; talya.hopV = won && !pending.length && !reducedMotion() ? (talya.hopV < -1 ? 4 : 0) : 0; }
+    talya.ears += (1 - talya.ears) * Math.min(1, dt * (alarmShown ? 0.4 : 3));
     talya.wag += dt * (won ? 22 : 5);
 
     ctx.clearRect(0, 0, cw, chh);
-    const view = { cs, ox, oy, t, angles: displayAngles, scales, pressed, focus, boost };
-    drawBoard(ctx, g, tr, view);
-    // bande où Talya se déplace
+    drawBoard(ctx, g, tr, { cs, ox, oy, t, angles: displayAngles, scales, pressed, focus, boost, reach, ghost });
     const gy = oy + g.h * cs + stripH * 0.86;
     ctx.fillStyle = 'rgba(125,235,255,.06)';
     ctx.fillRect(ox, gy, g.w * cs, 1);
