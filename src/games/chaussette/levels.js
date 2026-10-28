@@ -27,7 +27,7 @@ export const LEVELS = [
   },
   {
     name: 'La cuisine',
-    hint: 'Les plans de travail cachent la vue. Les canapés, non.',
+    hint: 'Florian jette parfois un œil derrière lui. Les plans de travail cachent la vue, les canapés non.',
     map: [
       '#############',
       '#c....#.....#',
@@ -40,17 +40,20 @@ export const LEVELS = [
       '#..kkkkkk...#',
       '#..kkkkkk...#',
       '#...........#',
-      '#...........#',
+      '#.....c.....#',
       '#.ss....tt..#',
       '#.......tt..#',
       '#D..........#',
       '#############',
     ],
-    guards: [{ name: 'Florian', path: [[2, 7], [10, 7], [10, 10], [2, 10]], mode: 'loop', speed: 1.3, pause: 0.7 }],
+    guards: [
+      {"name": "Florian", "path": [[2, 7], [10, 7], [10, 10], [2, 10]], "mode": "loop", "speed": 1.87, "pause": 0.52, "range": 6.47, "fov": 89, "glance": 3.6, "phase": 4.94},
+      {"name": "Amélien", "path": [[1, 3], [11, 3]], "speed": 1.32, "pause": 1.37, "range": 5.92, "fov": 94, "hair": "#141110", "skin": "#6b4630", "shirt": "#3d6f8f", "glance": 0, "phase": 3.6},
+    ],
   },
   {
     name: 'Le couloir',
-    hint: 'Deux patrouilles. Compte leurs pas avant de traverser.',
+    hint: 'Deux patrouilles. Amélien se retourne de temps en temps : compte ses pas avant de traverser.',
     map: [
       '#############',
       '#c..#...#..c#',
@@ -69,8 +72,8 @@ export const LEVELS = [
       '#############',
     ],
     guards: [
-      { name: 'Florian', path: [[1, 6], [11, 6]], speed: 1.6, pause: 1.2, range: 5 },
-      { name: 'Amélien', path: [[4, 11], [11, 11]], speed: 1.1, pause: 1.6, hair: '#1d1a19', shirt: '#3d6f8f' },
+      {"name": "Florian", "path": [[1, 6], [11, 6]], "speed": 1.7, "pause": 0.81, "range": 5, "glance": 0, "fov": 83, "phase": 2.13},
+      {"name": "Amélien", "path": [[4, 11], [11, 11]], "speed": 1.18, "pause": 1.82, "hair": "#141110", "skin": "#6b4630", "shirt": "#3d6f8f", "glance": 4.4, "range": 5.35, "fov": 83, "phase": 5.59},
     ],
   },
   {
@@ -95,13 +98,13 @@ export const LEVELS = [
       '#############',
     ],
     guards: [
-      { name: 'Florian', at: [6, 9], scan: [0, 90, 180, 270], hold: 2.2, turn: 0.9, range: 4.2 },
-      { name: 'Amélien', path: [[1, 5], [11, 5], [11, 1], [6, 1]], speed: 1.2, pause: 1, hair: '#1d1a19', shirt: '#3d6f8f' },
+      {"name": "Florian", "at": [6, 9], "scan": [0, 90, 180, 270], "hold": 2.38, "turn": 0.86, "range": 5.31, "fov": 81, "phase": 3.8},
+      {"name": "Amélien", "path": [[1, 5], [11, 5], [11, 1], [6, 1]], "speed": 1.2, "pause": 1.1, "hair": "#141110", "skin": "#6b4630", "shirt": "#3d6f8f", "glance": 5.2, "range": 4.81, "fov": 74, "phase": 2.52},
     ],
   },
   {
     name: 'Le grand appartement',
-    hint: 'La chaussette porte-bonheur de Florian est quelque part. Trois paires d’yeux, aucune excuse.',
+    hint: 'La chaussette porte-bonheur de Florian est quelque part. Florian, Amélien et Kahina veillent. Kahina a du flair, elle aussi.',
     map: [
       '#############',
       '#c..#....#..#',
@@ -124,9 +127,9 @@ export const LEVELS = [
       '#############',
     ],
     guards: [
-      { name: 'Florian', path: [[1, 6], [11, 6], [11, 9], [1, 9]], mode: 'loop', speed: 1.4, pause: 0.8 },
-      { name: 'Amélien', path: [[7, 11], [7, 14]], speed: 1.0, pause: 1.8, hair: '#1d1a19', shirt: '#3d6f8f' },
-      { name: 'Le chat', kind: 'cat', at: [8, 4], scan: [180, 225, 270, 225], hold: 1.8, turn: 0.7, range: 3.4, fov: 80 },
+      {"name": "Florian", "path": [[1, 6], [11, 6], [11, 9], [1, 9]], "mode": "loop", "speed": 1.84, "pause": 0.76, "glance": 5.2, "range": 6.71, "fov": 82, "phase": 0.24},
+      {"name": "Amélien", "path": [[7, 11], [7, 14]], "speed": 1.43, "pause": 0.86, "hair": "#141110", "skin": "#6b4630", "shirt": "#3d6f8f", "glance": 4.4, "range": 6.84, "fov": 90, "phase": 5.4},
+      {"name": "Kahina", "kind": "dog", "at": [8, 4], "scan": [180, 225, 270, 225], "hold": 2, "turn": 0.52, "range": 5.2, "fov": 95, "phase": 1.17},
     ],
   },
 ];

@@ -10,7 +10,7 @@ import { LEVELS } from './levels.js';
 export const SAVE_KEY = 'chaussette';
 export const COUNT = LEVELS.length;
 // temps de référence (environ 1,5 fois le meilleur temps prudent trouvé par le solveur)
-const TARGET = [26, 27, 38, 34, 40];
+const TARGET = [26, 32, 44, 33, 46];
 
 const PAL = {
   floorA: '#2b2521', floorB: '#2f2823', seam: 'rgba(0,0,0,.22)',
@@ -206,7 +206,9 @@ export function mount(root) {
     const a = gd.look != null ? gd.look : p.a;
     ctx.save();
     ctx.translate(x, y);
-    if (gd.g.kind === 'cat') {
+    if (gd.g.kind === 'dog') {
+      drawLab(ctx, a, ts, p.moving);
+    } else if (gd.g.kind === 'cat') {
       ctx.rotate(a);
       const s = ts / 34;
       ctx.scale(s, s);
@@ -231,8 +233,13 @@ export function mount(root) {
       ctx.beginPath(); ctx.ellipse(-2 + swing, -12, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(-2 - swing, 12, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(0, 0, 8, 13, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#e2b998'; ctx.beginPath(); ctx.arc(6.5, 0, 2.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = gd.g.hair; ctx.beginPath(); ctx.arc(1, 0, 6.6, 0, Math.PI * 2); ctx.fill();
+      // mains et visage (couleur de peau propre à chacun), cheveux vus du dessus
+      ctx.fillStyle = gd.g.skin;
+      ctx.beginPath(); ctx.arc(1 + swing, -14.5, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(1 - swing, 14.5, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2.5, 0, 6.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = gd.g.hair; ctx.beginPath(); ctx.ellipse(0.5, 0, 6, 6.2, 0, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0.5, 0, 3.4, 6.2, 0, -Math.PI * 0.5, Math.PI * 0.5); ctx.fill();
     }
     ctx.restore();
     // bulle d'alerte
@@ -336,7 +343,7 @@ export function mount(root) {
       let close;
       close = sheet([
         h('h2', {}, 'Repérée.'),
-        h('p', {}, gd.g.kind === 'cat' ? 'Le chat a tout vu. Il ne dira rien, mais il a fait tomber un verre.' : `${gd.g.name} a vu une queue blanche dépasser. Talya fait semblant de dormir.`),
+        h('p', {}, gd.g.kind === 'dog' ? 'Kahina a tout vu. Elle a aboyé une fois, puis elle a remué la queue. Trop tard, la maison est réveillée.' : `${gd.g.name} a vu une queue blanche dépasser. Talya fait semblant de dormir.`),
         h('div', { class: 'actions' },
           h('button', { class: 'btn', type: 'button', onclick: () => { close(); load(li); } }, 'Recommencer'),
           h('a', { class: 'btn ghost', href: '#/' }, 'Retour aux missions')),
@@ -471,6 +478,26 @@ function drawSock(ctx, x, y, ts, ph) {
   ctx.fillRect(-4, -10, 8, 3);
   ctx.fillRect(-4, -5, 8, 2);
   ctx.restore();
+}
+
+// Kahina, labrador chocolat, vue de dessus (oreilles tombantes, grosse queue)
+function drawLab(ctx, a, ts, moving) {
+  const s = ts / 34, t = performance.now();
+  ctx.rotate(a);
+  ctx.scale(s, s);
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(1, 2, 16, 9, 0, 0, Math.PI * 2); ctx.fill();
+  const C = '#6b4128', D = '#4e2e1b';
+  ctx.fillStyle = D;
+  for (const [lx, ly] of [[8, -7], [8, 7], [-9, -7], [-9, 7]]) { ctx.beginPath(); ctx.ellipse(lx + (moving ? Math.sin(t / 80 + lx) * 2 : 0), ly, 3.6, 2.4, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = C; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-14, 0); ctx.quadraticCurveTo(-20, Math.sin(t / 150) * 6, -24, Math.sin(t / 150) * 3); ctx.stroke();
+  ctx.fillStyle = C;
+  ctx.beginPath(); ctx.ellipse(-1, 0, 15, 8.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(13, 0, 7, 6.4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(19.5, 0, 4.4, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = D;
+  for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(11, sd * 6.2, 4.6, 2.4, sd * 0.35, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = '#1e120b'; ctx.beginPath(); ctx.arc(23.4, 0, 1.9, 0, Math.PI * 2); ctx.fill();
 }
 
 function roundRect(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }

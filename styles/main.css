@@ -486,3 +486,14 @@ button { font: inherit; color: inherit; }
 .m-flair { background: radial-gradient(120% 90% at 0% 100%, #1c1530 0%, #0a1311 70%); box-shadow: inset 0 0 0 1px rgba(198,155,255,.16); }
 .m-flair .m-play { background: #c69bff; color: #1a0d2e; }
 .m-art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fl-status { display: flex; align-items: center; gap: 14px; padding: 0 var(--gutter) 10px; }
+.fl-hearts { display: flex; gap: 2px; color: rgba(255,255,255,.18); }
+.fl-hearts span { display: grid; }
+.fl-hearts span.on { color: #ff6b6b; }
+.fl-bones { display: flex; align-items: center; gap: 4px; color: #f2c14e; font-size: 15px; }
+.fl-bones b { font-family: var(--display); font-weight: 800; font-size: 20px; color: var(--pelage); }
+.fl-power { font-size: 14px; font-weight: 600; }
+.fl-power.good { color: #ff8cc8; }
+.fl-power.bad { color: #a8d86a; }
+.fl-status .fl-breath { margin-left: auto; }
+.fl-danger { margin-top: 14px !important; font-size: 14px; color: #ffb4a8 !important; }

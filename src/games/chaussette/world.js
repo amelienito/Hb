@@ -42,7 +42,7 @@ export function parseLevel(L) {
 // Une patrouille : des points de passage, une vitesse, une pause à chaque point
 // pendant laquelle le regard pivote vers la direction suivante.
 function buildGuard(def) {
-  const look = { kind: def.kind || 'human', range: def.range || 4.5, fov: ((def.fov || 70) * Math.PI) / 180, phase: def.phase || 0, name: def.name || 'Florian', hair: def.hair || '#3a2a20', shirt: def.shirt || '#c0533b' };
+  const look = { kind: def.kind || 'human', skin: def.skin || '#e2b998', range: def.range || 4.5, fov: ((def.fov || 70) * Math.PI) / 180, phase: def.phase || 0, name: def.name || 'Florian', hair: def.hair || '#3a2a20', shirt: def.shirt || '#c0533b' };
   if (def.scan) {
     // garde immobile qui tourne la tête d'un angle à l'autre
     const at = [def.at[0] + 0.5, def.at[1] + 0.5];
@@ -76,7 +76,7 @@ function buildGuard(def) {
     segs.push({ kind: 'turn', t0: t, t1: t + p, at: b, from: head, to: next, look: def.look || 0 });
     t += p;
   }
-  return { segs, period: t, ...look };
+  return { segs, period: t, glance: def.glance || 0, ...look };
 }
 
 function angLerp(a, b, f) {
@@ -91,7 +91,15 @@ export function guardPose(g, t) {
   for (const s of g.segs) {
     if (tt < s.t0 || tt >= s.t1) continue;
     const f = (tt - s.t0) / Math.max(1e-6, s.t1 - s.t0);
-    if (s.kind === 'move') return { x: s.a[0] + (s.b[0] - s.a[0]) * f, y: s.a[1] + (s.b[1] - s.a[1]) * f, a: s.head, moving: true };
+    if (s.kind === 'move') {
+      // coup d'œil par-dessus l'épaule à intervalle régulier (le côté alterne)
+      let a = s.head;
+      if (g.glance) {
+        const ph = tt % g.glance;
+        if (ph < 1.1) a += Math.sin((ph / 1.1) * Math.PI) * 2.3 * (Math.floor(tt / g.glance) % 2 ? 1 : -1);
+      }
+      return { x: s.a[0] + (s.b[0] - s.a[0]) * f, y: s.a[1] + (s.b[1] - s.a[1]) * f, a, moving: true };
+    }
     // pivot doux : on regarde encore un peu devant, puis on se retourne
     const e = s.fast ? f : f < 0.35 ? 0 : (f - 0.35) / 0.65;
     const ease = e * e * (3 - 2 * e);

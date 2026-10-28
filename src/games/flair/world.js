@@ -26,19 +26,19 @@ export const OBJECTS = {
 export const CASES = [
   { name: 'La balle', seed: 11, w: 18, h: 28, target: 'ball', scent: ['dot', '#ffc94d'], decoys: [], gaps: 0,
     intro: 'Talya a perdu sa balle. Elle sait exactement où elle est. Enfin, son nez le sait.',
-    hint: 'Maintiens Flairer pour voir les odeurs, puis suis les ronds dorés.' },
+    hint: 'Maintiens Flairer pour voir les odeurs et suis les ronds dorés. Les hérissons piquent : contourne-les.' },
   { name: 'Les clés', seed: 23, w: 20, h: 30, target: 'keys', scent: ['diamond', '#6fe3ff'], decoys: [['sausage', 'tri', '#ff7aa8']], gaps: 0,
     intro: 'Florian cherche ses clés depuis vingt minutes. Talya, elle, a déjà une idée.',
-    hint: 'Deux odeurs se croisent. Suis seulement les losanges bleus.' },
+    hint: 'Suis les losanges bleus. Le renard court moins vite que toi, sauf quand tu flaires. Les buissons te cachent.' },
   { name: 'Le goûter', seed: 37, w: 20, h: 32, target: 'sandwich', scent: ['square', '#b6f25a'], decoys: [['cone', 'dot', '#ffc94d'], ['glove', 'star', '#c69bff']], gaps: 0,
     intro: 'Quelqu’un a caché un goûter dans la forêt. Talya considère que c’est un cadeau.',
-    hint: 'Ton souffle est limité : flaire par petites bouffées.' },
+    hint: 'Flaire par petites bouffées, évite les guêpes, et ne flaire surtout pas dans le nuage de la moufette.' },
   { name: 'La chaussette', seed: 41, w: 22, h: 34, target: 'sock', scent: ['star', '#c69bff'], decoys: [['bone', 'square', '#b6f25a'], ['sausage', 'tri', '#ff7aa8'], ['glove', 'diamond', '#6fe3ff']], gaps: 1,
     intro: 'Une chaussette a disparu. Talya a un alibi, mais elle veut quand même la retrouver.',
-    hint: 'La piste s’interrompt parfois. Continue tout droit, elle reprend plus loin.' },
+    hint: 'La piste s’efface au ruisseau, elle reprend plus loin. Un sanglier gratte le sol avant de charger : écarte-toi.' },
   { name: 'Le cadeau', seed: 58, w: 22, h: 36, target: 'gift', scent: ['dot', '#ff6b5e'], decoys: [['bone', 'square', '#b6f25a'], ['cone', 'star', '#c69bff'], ['sausage', 'diamond', '#6fe3ff']], gaps: 2,
     intro: 'Quelqu’un a caché un cadeau pour les 30 ans de Florian. Talya va le trouver avant lui.',
-    hint: 'Ronds rouges. Pas de panique, pas de saucisse.' },
+    hint: 'Ronds rouges. Toute la forêt est réveillée. Au flair, les os dorés scintillent.' },
 ];
 
 function valueNoise(R, w, h, cell) {

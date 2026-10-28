@@ -5,6 +5,7 @@ import { get, set } from '../../core/store.js';
 import { sfx } from '../../core/sound.js';
 import { moveCircle, createStick, fitCanvas, drawTalyaTop, lerpAngle, rng } from '../../core/topdown.js';
 import { CASES, OBJECTS, buildCase } from './world.js';
+import { THREATS, NAMES, spawn, updateBeasts, drawBeast, drawEyes, drawZone, drawItem } from './beasts.js';
 
 export const SAVE_KEY = 'flair';
 export const COUNT = CASES.length;
@@ -23,6 +24,9 @@ export function mount(root) {
   const chipEl = h('div', { class: 'fl-chip', title: 'Odeur à suivre' });
   const breathEl = h('div', { class: 'fl-breath', title: 'Souffle' }, h('i'));
   const timeEl = h('div', { class: 'fl-time' }, '0,0');
+  const heartsEl = h('div', { class: 'fl-hearts', 'aria-label': 'Vies' });
+  const bonesEl = h('div', { class: 'fl-bones', 'aria-label': 'Os dorés' });
+  const powerEl = h('div', { class: 'fl-power' });
   const hintEl = h('p', { class: 'fl-tip', 'aria-live': 'polite' });
   const toastEl = h('div', { class: 'fl-toast', 'aria-live': 'polite' });
   const canvas = h('canvas', { 'aria-label': 'Forêt de nuit vue de dessus. Déplace Talya avec le doigt ou les flèches, maintiens Flairer.' });
@@ -32,7 +36,8 @@ export function mount(root) {
 
   root.append(
     h('header', { class: 'g-bar' }, backButton(), h('div', { class: 'g-title' }, 'Flair'), levelsBtn),
-    h('div', { class: 'fl-hud' }, levelEl, h('div', { class: 'fl-right' }, chipEl, breathEl, timeEl)),
+    h('div', { class: 'fl-hud' }, levelEl, h('div', { class: 'fl-right' }, chipEl, timeEl)),
+    h('div', { class: 'fl-status' }, heartsEl, bonesEl, powerEl, breathEl),
     stage,
     h('div', { class: 'fl-tools' }, hintEl, soundButton()),
   );
@@ -41,6 +46,7 @@ export function mount(root) {
   const stick = createStick(stage);
   let li = isOpen(save.last || 0) ? save.last || 0 : 0;
   let C, world, talya, objects, trails, time, penalty, wrong, state, breath, lock, sniffing, flair, sinceSniff, bg, ts, W, H, cam, particles, toastTimer, alive = true;
+  let beasts, zones, items, hearts, bones, inv, noseSat, superNose, waspT;
 
   // --- bouton Flairer (maintenu) + clavier ---
   let sniffHeld = false, keyHeld = false;
@@ -65,6 +71,8 @@ export function mount(root) {
     trails = world.trails.map((t, k) => ({ ...t, k, gone: false, len: (t.pts.length - 1) * 0.25 }));
     time = 0; penalty = 0; wrong = 0; breath = 1; lock = false; sniffing = false; flair = 0; sinceSniff = 9;
     particles = []; bg = null; cam = { x: talya.x, y: talya.y };
+    ({ beasts, zones, items } = spawn(world, n, C.seed));
+    hearts = 3; bones = 0; inv = 0; noseSat = 0; superNose = 0; waspT = 0; hudKey = '';
     state = 'intro';
     levelEl.innerHTML = '';
     levelEl.append(h('small', {}, `Affaire ${n + 1} sur ${COUNT}`), C.name);
@@ -83,12 +91,22 @@ export function mount(root) {
       h('p', {}, C.intro),
       h('div', { class: 'fl-sample' }, h('span', { class: 'fl-sample-g', html: glyphSVG(C.scent[0], C.scent[1], 34) }),
         h('div', {}, h('b', {}, 'Odeur à suivre'), h('span', {}, `Des ${plural(C.scent[0])} de cette couleur. Les autres odeurs mènent ailleurs.`))),
+      h('p', { class: 'fl-danger' }, dangerLine(li)),
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: () => { close(); state = 'play'; } }, 'Renifler')),
     ], 'fl-sheet');
   }
 
+  let hudKey = '';
   function paintHud() {
+    const key = [hearts, bones, Math.ceil(noseSat), Math.ceil(superNose)].join('|');
+    if (key === hudKey) { timeEl.textContent = (time + penalty).toFixed(1).replace('.', ','); return; }
+    hudKey = key;
     timeEl.textContent = (time + penalty).toFixed(1).replace('.', ',');
+    heartsEl.innerHTML = [0, 1, 2].map(k => `<span class="${k < hearts ? 'on' : ''}">${HEART}</span>`).join('');
+    const total = items.filter(i => i.kind === 'bone').length;
+    bonesEl.innerHTML = `${BONE}<b>${bones}</b>/${total}`;
+    powerEl.textContent = noseSat > 0 ? `Nez saturé ${Math.ceil(noseSat)} s` : superNose > 0 ? `Super-truffe ${Math.ceil(superNose)} s` : '';
+    powerEl.className = 'fl-power' + (noseSat > 0 ? ' bad' : superNose > 0 ? ' good' : '');
   }
 
   function toast(text) {
@@ -158,9 +176,17 @@ export function mount(root) {
     if (state !== 'play') return;
     time += dt;
     // flair et souffle
-    const want = (sniffHeld || keyHeld || (bot && bot.on)) && !lock;
+    noseSat = Math.max(0, noseSat - dt);
+    superNose = Math.max(0, superNose - dt);
+    inv = Math.max(0, inv - dt);
+    const want = (sniffHeld || keyHeld || (bot && bot.on)) && !lock && noseSat <= 0;
     sniffing = want && breath > 0;
-    if (sniffing) { breath = Math.max(0, breath - dt / 4.5); sinceSniff = 0; if (breath === 0) { lock = true; toast('Plus de souffle. Respire un peu.'); } }
+    if (sniffing && superNose <= 0) { breath = Math.max(0, breath - dt / 4.5); sinceSniff = 0; if (breath === 0) { lock = true; toast('Plus de souffle. Respire un peu.'); } }
+    else if (sniffing) sinceSniff = 0;
+    // flairer dans le nuage d'une moufette sature le nez
+    if (sniffing && !bot && zones.some(z => z.kind === 'skunk' && Math.hypot(z.x - talya.x, z.y - talya.y) < z.r)) {
+      noseSat = 5; sniffing = false; sfx.wrong(); buzz(40); toast('Une moufette. Ton nez est saturé pour 5 secondes.');
+    }
     else { sinceSniff += dt; if (sinceSniff > 0.5) breath = Math.min(1, breath + dt / 6); }
     if (lock && breath >= 0.3) lock = false;
     flair += ((sniffing ? 1 : 0) - flair) * Math.min(1, dt * (sniffing ? 9 : 1.1));
@@ -179,6 +205,32 @@ export function mount(root) {
     } else talya.moving = false;
     talya.ears += (1 - talya.ears) * Math.min(1, dt * 2);
 
+    // bêtes et guêpes
+    const events = [];
+    const hit = updateBeasts(world, beasts, talya, dt, events);
+    for (const [kind] of events) { if (kind === 'boar') sfx.alarm(); else if (kind === 'fox') sfx.tick(); else if (kind === 'thud') buzz(20); }
+    const safe = bot && !bot.hurt;
+    if (hit && !inv && !safe) {
+      // après une morsure, le renard file et le sanglier reste sonné : pas d'acharnement
+      if (hit.kind === 'fox') { hit.state = 'idle'; hit.cool = 4; hit.t = 0; hit.a += Math.PI; }
+      if (hit.kind === 'boar') { hit.state = 'stun'; hit.t = 0; }
+      hurt(NAMES[hit.kind], hit.x, hit.y);
+    }
+    if (state !== 'play') return;
+    waspT = Math.max(0, waspT - dt);
+    const wasp = zones.find(z => z.kind === 'wasps' && Math.hypot(z.x - talya.x, z.y - talya.y) < z.r);
+    if (wasp && !inv && !waspT && !safe) { waspT = 1.2; hurt(NAMES.wasps, wasp.x, wasp.y); if (state !== 'play') return; }
+    // bonus
+    for (const it of items) {
+      if (it.taken || Math.hypot(it.x - talya.x, it.y - talya.y) > 0.6) continue;
+      it.taken = true;
+      buzz(12);
+      if (it.kind === 'treat') { breath = 1; lock = false; sfx.place(); toast('Une friandise : souffle au maximum.'); }
+      else if (it.kind === 'bone') { bones++; sfx.lit(bones); toast(`Os doré ${bones} sur ${items.filter(i => i.kind === 'bone').length}.`); }
+      else if (it.kind === 'nose') { superNose = 7; noseSat = 0; breath = 1; lock = false; sfx.win(); toast('Super-truffe : 7 secondes de flair illimité, et plus loin.'); }
+      for (let k = 0; k < 16; k++) particles.push({ x: it.x, y: it.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 0.8, c: it.kind === 'bone' ? '#f2c14e' : it.kind === 'nose' ? '#ff8cc8' : '#e8c27a' });
+    }
+
     // objets
     for (const o of objects) {
       if (o.gone || Math.hypot(o.x - talya.x, o.y - talya.y) > 0.7) continue;
@@ -194,14 +246,43 @@ export function mount(root) {
     paintHud();
   }
 
+  function hurt(name, fx, fy) {
+    hearts--; inv = 1.6;
+    // petit recul, loin de ce qui a mordu ou piqué
+    const a = Math.atan2(talya.y - fy, talya.x - fx);
+    [talya.x, talya.y] = moveCircle(world.solid, talya.x, talya.y, 0.3, Math.cos(a) * 0.9, Math.sin(a) * 0.9);
+    talya.ears = 0.15;
+    sfx.wrong(); buzz(70);
+    paintHud();
+    if (hearts <= 0) return lost(name);
+    toast(`${cap(name)} ! Plus que ${hearts} cœur${hearts > 1 ? 's' : ''}.`);
+  }
+
+  function lost(name) {
+    state = 'lost';
+    setTimeout(() => {
+      let close;
+      close = sheet([
+        h('p', { class: 'fl-case' }, `Affaire n°${li + 1}`),
+        h('h2', {}, 'Talya rentre bredouille.'),
+        h('p', {}, `C’est ${name} qui a eu le dernier mot. Elle boude dans son panier, mais elle reviendra.`),
+        h('div', { class: 'actions' },
+          h('button', { class: 'btn', type: 'button', onclick: () => { close(); load(li, false); } }, 'Recommencer'),
+          h('a', { class: 'btn ghost', href: '#/' }, 'Retour aux missions')),
+      ], 'fl-sheet');
+    }, reducedMotion() ? 100 : 700);
+  }
+
   function found(o) {
     state = 'found';
     sfx.win(); buzz(30);
     for (let k = 0; k < 40; k++) particles.push({ x: o.x, y: o.y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, life: 1.2, c: C.scent[1] });
     const total = time + penalty;
     const prev = save.best[li];
-    if (!prev || total < prev.time) save.best[li] = { time: total, clean: wrong === 0 };
-    else if (wrong === 0) save.best[li].clean = true;
+    const allBones = bones >= items.filter(i => i.kind === 'bone').length;
+    const perfect = wrong === 0 && hearts === 3 && allBones;
+    if (!prev || total < prev.time) save.best[li] = { time: total, clean: perfect || (prev && prev.clean) };
+    else if (perfect) save.best[li].clean = true;
     set(SAVE_KEY, save);
     const target = Math.round(world.length / SPEED * 1.7 + 8);
     const last = li === COUNT - 1;
@@ -213,9 +294,11 @@ export function mount(root) {
         h('h2', {}, last ? 'Joyeux anniversaire, Florian.' : `${cap(OBJECTS[o.kind].name)}.`),
         h('p', {}, last
           ? 'Talya a retrouvé le cadeau avant toi. Elle ne l’a presque pas mâchouillé.'
-          : wrong === 0 ? 'Sans une seule fausse piste. Le nez le plus fin de la forêt.' : `Retrouvé, après ${wrong} détour${wrong > 1 ? 's' : ''} gourmand${wrong > 1 ? 's' : ''}.`),
+          : perfect ? 'Affaire parfaite : aucune fausse piste, aucune égratignure, tous les os.' : wrong === 0 ? 'Sans une seule fausse piste. Le nez le plus fin de la forêt.' : `Retrouvé, après ${wrong} détour${wrong > 1 ? 's' : ''} gourmand${wrong > 1 ? 's' : ''}.`),
         h('div', { class: 'stat-row' },
           h('div', { class: 'stat' }, h('b', {}, total.toFixed(1).replace('.', ',') + ' s'), h('span', {}, total <= target ? 'objectif tenu' : `objectif ${target} s`)),
+          h('div', { class: 'stat' }, h('b', {}, `${bones}/${items.filter(i => i.kind === 'bone').length}`), h('span', {}, 'os dorés')),
+          h('div', { class: 'stat' }, h('b', {}, hearts), h('span', {}, hearts > 1 ? 'cœurs restants' : 'cœur restant')),
           h('div', { class: 'stat' }, h('b', {}, wrong), h('span', {}, wrong === 1 ? 'fausse piste' : 'fausses pistes')),
           prev ? h('div', { class: 'stat' }, h('b', {}, Math.min(prev.time, total).toFixed(1).replace('.', ',') + ' s'), h('span', {}, 'record')) : null),
         h('div', { class: 'actions' },
@@ -229,7 +312,7 @@ export function mount(root) {
     let close;
     close = sheet([
       h('h2', {}, 'Affaires'),
-      h('p', {}, 'Un point violet : affaire résolue sans fausse piste.'),
+      h('p', {}, 'Un point violet : affaire parfaite (aucune fausse piste, aucun cœur perdu, tous les os).'),
       h('div', { class: 'lv-grid' }, CASES.map((c, n) => {
         const b = save.best[n];
         return h('button', {
@@ -262,8 +345,11 @@ export function mount(root) {
 
     ctx.fillStyle = '#081410'; ctx.fillRect(0, 0, W, H);
     ctx.drawImage(bg, ox, oy, world.w * ts, world.h * ts);
+    for (const z of zones) drawZone(ctx, z, sx(z.x), sy(z.y), ts, now);
+    for (const it of items) if (!it.taken) drawItem(ctx, it, sx(it.x), sy(it.y), ts, now);
     for (const o of objects) if (!o.gone) drawObject(ctx, o.kind, sx(o.x), sy(o.y), ts, now);
-    drawTalyaTop(ctx, sx(talya.x), sy(talya.y), talya.a, ts * 0.95, now, talya.moving, { ears: talya.ears, sniff: sniffing });
+    for (const b of beasts) drawBeast(ctx, b, sx(b.x), sy(b.y), ts, now);
+    if (!(inv > 0 && Math.floor(now / 90) % 2)) drawTalyaTop(ctx, sx(talya.x), sy(talya.y), talya.a, ts * 0.95, now, talya.moving, { ears: talya.ears, sniff: sniffing });
 
     // nuit : seule une petite zone autour de Talya est éclairée
     const px = sx(talya.x), py = sy(talya.y);
@@ -273,6 +359,22 @@ export function mount(root) {
     dark.addColorStop(1, `rgba(3,8,10,${0.8 + flair * 0.1})`);
     ctx.fillStyle = dark; ctx.fillRect(0, 0, W, H);
     if (flair > 0.01) { ctx.fillStyle = `rgba(10,6,30,${flair * 0.22})`; ctx.fillRect(0, 0, W, H); }
+    if (noseSat > 0) { ctx.fillStyle = `rgba(120,170,60,${Math.min(0.22, noseSat * 0.06)})`; ctx.fillRect(0, 0, W, H); }
+    // les yeux des bêtes brillent dans le noir
+    for (const b of beasts) drawEyes(ctx, b, sx(b.x), sy(b.y), ts, now, Math.hypot(b.x - talya.x, b.y - talya.y));
+    // au flair, les os dorés et les friandises scintillent
+    if (flair > 0.05) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      for (const it of items) {
+        if (it.taken) continue;
+        const d = Math.hypot(it.x - talya.x, it.y - talya.y), R = SCENT_R * (superNose > 0 ? 1.6 : 1);
+        if (d > R) continue;
+        const a = flair * (1 - d / R) * (0.6 + 0.4 * Math.sin(now / 160 + it.x));
+        const col = it.kind === 'bone' ? '#f2c14e' : it.kind === 'nose' ? '#ff8cc8' : '#e8c27a';
+        drawGlyph(ctx, 'star', col, sx(it.x), sy(it.y), ts * 0.12, a, 0);
+      }
+      ctx.restore();
+    }
 
     // odeurs
     if (flair > 0.01) drawScents(ctx, sx, sy, now);
@@ -299,9 +401,10 @@ export function mount(root) {
         const a = t.pts[i], b = t.pts[i + 1], fr = f - i;
         const x = a[0] + (b[0] - a[0]) * fr, y = a[1] + (b[1] - a[1]) * fr;
         const d = Math.hypot(x - talya.x, y - talya.y);
-        if (d > SCENT_R) continue;
+        const RS = SCENT_R * (superNose > 0 ? 1.6 : 1);
+        if (d > RS) continue;
         // l'odeur est plus forte près de Talya, et s'estompe aux deux bouts de la portée
-        const alpha = flair * Math.pow(1 - d / SCENT_R, 0.7);
+        const alpha = flair * Math.pow(1 - d / RS, 0.7);
         const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
         drawGlyph(g, t.shape, t.color, sx(x), sy(y), ts * 0.15, alpha, ang);
       }
@@ -311,7 +414,7 @@ export function mount(root) {
 
   // --- pilote de test (?bot) : flaire en continu et suit la vraie piste ---
   let bot = null;
-  if (/[?&]bot\b/.test(location.search)) bot = { on: true, i: 0 };
+  if (/[?&]bot\b/.test(location.search)) bot = { on: true, i: 0, hurt: /bot=hurt/.test(location.search) };
   function botInput() {
     const pts = trails[0].pts;
     while (bot.i < pts.length - 1 && Math.hypot(pts[bot.i][0] - talya.x, pts[bot.i][1] - talya.y) < 0.9) bot.i++;
@@ -319,7 +422,7 @@ export function mount(root) {
     const dx = x - talya.x, dy = y - talya.y, d = Math.hypot(dx, dy) || 1;
     return { x: dx / d, y: dy / d };
   }
-  window.__fl = { get state() { return state; }, get time() { return time; }, get wrong() { return wrong; }, start: () => { document.querySelectorAll('.overlay').forEach(o => o.remove()); state = 'play'; }, load: n => { load(n); if (bot) bot.i = 0; } };
+  window.__fl = { get state() { return state; }, get time() { return time; }, get wrong() { return wrong; }, get hearts() { return hearts; }, start: () => { document.querySelectorAll('.overlay').forEach(o => o.remove()); state = 'play'; }, load: n => { load(n); if (bot) bot.i = 0; } };
 
   let raf = 0, last = performance.now();
   load(li);
@@ -330,6 +433,16 @@ export function mount(root) {
       window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku);
     },
   };
+}
+
+const HEART = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.8 4.5c2.2 0 3.6 1.2 5.2 3 1.6-1.8 3-3 5.2-3 3.8 0 5.9 3.9 4.4 7.3C19.5 16.4 12 21 12 21z" fill="currentColor"/></svg>';
+const BONE = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M7 9.5a2.5 2.5 0 1 1 2.5-3.2l5 5a2.5 2.5 0 1 1 3.2 2.5 2.5 2.5 0 1 1-3.2 2.5l-5-5A2.5 2.5 0 1 1 7 9.5z" fill="currentColor"/></svg>';
+const DANGER_NAMES = { hedgehog: ['un hérisson', 'des hérissons'], fox: ['un renard', 'des renards'], wasps: ['un nid de guêpes', 'des guêpes'], skunk: ['une moufette', 'des moufettes'], boar: ['un sanglier', 'des sangliers'] };
+function dangerLine(n) {
+  const c = THREATS[n];
+  const list = Object.keys(DANGER_NAMES).filter(k => c[k] > 0).map(k => DANGER_NAMES[k][c[k] > 1 ? 1 : 0]);
+  const last = list.pop();
+  return `Cette nuit dans la forêt : ${list.length ? list.join(', ') + ' et ' : ''}${last}. Trois cœurs, pas un de plus.`;
 }
 
 // --- dessins ---
