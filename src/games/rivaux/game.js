@@ -3,7 +3,7 @@
 import { h, backButton, soundButton, sheet, fmt, buzz, reducedMotion } from '../../core/ui.js';
 import { get, set } from '../../core/store.js';
 import { sfx } from '../../core/sound.js';
-import { FILMS, HEROES, FAMILIES, MCU_DEBUTS, CAST } from './data.js';
+import { FILMS, HEROES, FAMILIES, MCU_DEBUTS, CAST, RT, RT_TOL, OPENING, PHASE, CREDITS, CHRONO, STONES, APPEARANCES } from './data.js';
 
 const DURATION = 60000;
 const PENALTY = 5000;
@@ -11,51 +11,107 @@ const PENALTY = 5000;
 const FEM = new Set(['Gwyneth Paltrow', 'Tessa Thompson', 'Cate Blanchett', 'Scarlett Johansson', 'Florence Pugh', 'Tatiana Maslany', 'Letitia Wright', 'Brie Larson', 'Iman Vellani', 'Elizabeth Olsen', 'Zoe Saldaña', 'Karen Gillan', 'Vanessa Kirby']);
 const money = m => (m >= 1000 ? (m / 1000).toFixed(2).replace('.', ',') + ' Md$' : m + ' M$');
 
+// Chaque catégorie a un niveau : les questions pointues arrivent quand la série monte.
+// tier 0 = grand public, 1 = fan, 2 = expert.
+const filmItems = (fn, kind) => FILMS.map((f, i) => fn(f, i)).filter(Boolean).map(o => ({ kind, ...o }));
 const CATS = {
   box: {
-    w: 0.15, label: 'Box-office mondial',
+    w: 0.8, tier: 0, label: 'Box-office mondial',
     items: FILMS.map(f => ({ name: f[0], kind: 'Film, ' + f[1], fam: f[2], v: f[3], show: money(f[3]), sub: 'Au box-office ?' })),
-    ask: up => (up ? 'Lequel a rapporté <em>le plus</em> ?' : 'Lequel a rapporté <em>le moins</em> ?'),
+    ask: up => (up ? 'Quel film a <em>le plus</em> rapporté dans le monde ?' : 'Quel film a <em>le moins</em> rapporté dans le monde ?'),
     short: up => (up ? 'Plus gros box-office' : 'Plus petit box-office'),
     far: (a, b, s) => Math.max(a.v, b.v) / Math.min(a.v, b.v) >= Math.max(1.12, 1.9 - s * 0.08),
   },
   dur: {
-    w: 0.13, label: 'Durée en salle',
+    w: 0.8, tier: 0, label: 'Durée en salle',
     items: FILMS.map(f => ({ name: f[0], kind: 'Film, ' + f[1], fam: f[2], v: f[4], show: f[4] + ' min', sub: 'Combien de temps ?' })),
-    ask: up => (up ? 'Lequel est <em>le plus long</em> ?' : 'Lequel est <em>le plus court</em> ?'),
+    ask: up => (up ? 'Quel film est <em>le plus long</em> ?' : 'Quel film est <em>le plus court</em> ?'),
     short: up => (up ? 'Plus long' : 'Plus court'),
     far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(6, 28 - s * 2.5),
   },
-  comic: {
-    w: 0.2, label: 'Première apparition en comics',
-    // pour « en premier », la plus petite année gagne : on inverse le signe
-    items: HEROES.map(c => ({ name: c[0], kind: 'Personnage', fam: c[3], v: c[1], show: String(c[1]), small: c[2], sub: 'Première apparition ?' })),
-    ask: up => (up ? 'Qui est apparu <em>le plus tard</em> ?' : 'Qui est apparu <em>en premier</em> ?'),
-    short: up => (up ? 'Apparu plus tard' : 'Apparu en premier'),
-    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 14 - s * 1.2),
-  },
-  mcu: {
-    w: 0.2, label: 'Arrivée dans le MCU',
-    items: MCU_DEBUTS.map(c => ({ name: c[0], kind: 'Personnage', fam: c[3], v: c[1], show: String(c[1]), small: c[2], sub: 'Arrivé dans le MCU quand ?' })),
-    ask: up => (up ? 'Qui est arrivé <em>le plus tard</em> dans le MCU ?' : 'Qui est arrivé <em>en premier</em> dans le MCU ?'),
-    short: up => (up ? 'Arrivé plus tard au cinéma' : 'Arrivé en premier au cinéma'),
-    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 5 - s * 0.4),
-  },
-  cast: {
-    w: 0.17, label: 'Le casting',
-    items: CAST.map(c => ({ name: c[0], kind: c[2], fam: c[3], v: -c[1], show: 'né' + (FEM.has(c[0]) ? 'e' : '') + ' en ' + c[1], sub: 'Quel âge ?' })),
-    ask: up => (up ? 'Qui est <em>le plus âgé</em> ?' : 'Qui est <em>le plus jeune</em> ?'),
-    short: up => (up ? 'Plus âgé' : 'Plus jeune'),
-    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(2, 12 - s),
-  },
   year: {
-    w: 0.15, label: 'Sortie en salle',
+    w: 0.7, tier: 0, label: 'Sorties en salle',
     items: FILMS.map(f => ({ name: f[0], kind: 'Film', fam: f[2], v: -f[1], show: String(f[1]), sub: 'Sorti quand ?' })),
-    ask: up => (up ? 'Lequel est sorti <em>en premier</em> ?' : 'Lequel est sorti <em>le plus tard</em> ?'),
+    ask: up => (up ? 'Quel film est sorti <em>en premier</em> au cinéma ?' : 'Quel film est sorti <em>le plus tard</em> au cinéma ?'),
     short: up => (up ? 'Sorti en premier' : 'Sorti plus tard'),
     far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 6 - s * 0.5),
   },
+  rt: {
+    w: 1, tier: 0, label: 'Note des critiques (Rotten Tomatoes)',
+    items: filmItems((f, i) => ({ name: f[0], fam: f[2], v: RT[i], tol: RT_TOL[i] || 0, show: RT[i] + ' %', sub: 'Aimé des critiques ?' }), 'Film'),
+    ask: up => (up ? 'Quel film a la <em>meilleure</em> note des critiques ?' : 'Quel film a la note des critiques <em>la plus basse</em> ?'),
+    short: up => (up ? 'Mieux noté' : 'Moins bien noté'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(3, 15 - s * 1.2) + a.tol + b.tol,
+  },
+  cast: {
+    w: 0.8, tier: 0, label: 'Le casting (années de naissance)',
+    items: CAST.map(c => ({ name: c[0], kind: 'Interprète de ' + c[2], fam: c[3], v: -c[1], show: 'né' + (FEM.has(c[0]) ? 'e' : '') + ' en ' + c[1], sub: 'Quel âge ?' })),
+    ask: up => (up ? 'Qui est <em>le plus âgé</em> des deux ?' : 'Qui est <em>le plus jeune</em> des deux ?'),
+    short: up => (up ? 'Plus âgé' : 'Plus jeune'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(2, 12 - s),
+  },
+  comic: {
+    w: 1, tier: 1, label: 'Premières apparitions dans les comics',
+    items: HEROES.map(c => ({ name: c[0], kind: 'Personnage de comics', fam: c[3], v: c[1], show: String(c[1]), small: c[2], sub: 'Né quand, sur papier ?' })),
+    ask: up => (up ? 'Quel personnage est apparu <em>le plus tard</em> dans les comics ?' : 'Quel personnage est apparu <em>en premier</em> dans les comics ?'),
+    short: up => (up ? 'Apparu plus tard en comics' : 'Apparu en premier en comics'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 14 - s * 1.2),
+  },
+  mcu: {
+    w: 1, tier: 1, label: 'Arrivées au cinéma (MCU)',
+    items: MCU_DEBUTS.map(c => ({ name: c[0], kind: 'Personnage du MCU', fam: c[3], v: c[1], show: String(c[1]), small: c[2], sub: 'Arrivé quand au cinéma ?' })),
+    ask: up => (up ? 'Quel personnage est arrivé <em>le plus tard</em> dans les films du MCU ?' : 'Quel personnage est arrivé <em>en premier</em> dans les films du MCU ?'),
+    short: up => (up ? 'Arrivé plus tard au cinéma' : 'Arrivé en premier au cinéma'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 5 - s * 0.4),
+  },
+  apps: {
+    w: 0.9, tier: 1, label: 'Nombre de films (caméos compris)',
+    items: APPEARANCES.map(c => ({ name: c[0], kind: 'Personnage du MCU', fam: c[3], v: c[1], tol: c[2], show: c[1] + ' films', sub: 'Combien de films ?' })),
+    ask: up => (up ? 'Qui apparaît dans <em>le plus</em> de films du MCU, caméos compris ?' : 'Qui apparaît dans <em>le moins</em> de films du MCU, caméos compris ?'),
+    short: up => (up ? 'Plus de films' : 'Moins de films'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= Math.max(1, 4 - s * 0.3) + a.tol + b.tol,
+  },
+  phase: {
+    w: 0.6, tier: 1, label: 'Les phases du MCU',
+    items: filmItems((f, i) => ({ name: f[0], fam: f[2], v: PHASE[i], show: 'Phase ' + PHASE[i], sub: 'Quelle phase ?' }), 'Film'),
+    ask: up => (up ? 'Quel film appartient à une phase <em>plus récente</em> ?' : 'Quel film appartient à une phase <em>plus ancienne</em> ?'),
+    short: up => (up ? 'Phase plus récente' : 'Phase plus ancienne'),
+    far: (a, b, s) => Math.abs(a.v - b.v) >= (s > 6 ? 1 : 2),
+  },
+  chrono: {
+    w: 1, tier: 2, label: 'Chronologie interne du MCU',
+    items: filmItems((f, i) => CHRONO[i] && ({ name: f[0], fam: f[2], v: -CHRONO[i][0], tol: CHRONO[i][1], show: CHRONO[i][2], sub: 'Ça se passe quand ?' }), 'Film'),
+    ask: up => (up ? 'Quel film se déroule <em>en premier</em> dans la chronologie du MCU ?' : 'Quel film se déroule <em>le plus tard</em> dans la chronologie du MCU ?'),
+    short: up => (up ? 'Se déroule en premier' : 'Se déroule plus tard'),
+    far: (a, b, s) => Math.abs(a.v - b.v) > Math.max(0.04, 3 - s * 0.3) + a.tol + b.tol,
+  },
+  open: {
+    w: 0.6, tier: 2, label: 'Premier week-end (États-Unis et Canada)',
+    items: filmItems((f, i) => OPENING[i] != null && ({ name: f[0], fam: f[2], v: OPENING[i], show: String(OPENING[i]).replace('.', ',') + ' M$', sub: 'Démarrage en salle ?' }), 'Film, ' + ''),
+    ask: up => (up ? 'Quel film a fait le <em>meilleur</em> premier week-end aux États-Unis ?' : 'Quel film a fait le premier week-end <em>le plus faible</em> aux États-Unis ?'),
+    short: up => (up ? 'Meilleur démarrage' : 'Démarrage plus faible'),
+    far: (a, b, s) => Math.max(a.v, b.v) / Math.min(a.v, b.v) >= Math.max(1.12, 1.7 - s * 0.06),
+  },
+  credits: {
+    w: 0.5, tier: 2, label: 'Scènes pendant et après le générique',
+    items: filmItems((f, i) => CREDITS[i] != null && ({ name: f[0], fam: f[2], v: CREDITS[i], show: CREDITS[i] === 0 ? 'aucune' : CREDITS[i] + (CREDITS[i] > 1 ? ' scènes' : ' scène'), sub: 'Combien de scènes bonus ?' }), 'Film'),
+    ask: up => (up ? 'Quel film a <em>le plus</em> de scènes pendant ou après le générique ?' : 'Quel film a <em>le moins</em> de scènes pendant ou après le générique ?'),
+    short: up => (up ? 'Plus de scènes de générique' : 'Moins de scènes de générique'),
+    far: (a, b) => Math.abs(a.v - b.v) >= 1,
+  },
+  stones: {
+    w: 0.35, tier: 2, label: 'Pierres d’Infinité',
+    items: STONES.map(c => ({ name: c[0], kind: 'Pierre d’Infinité', fam: c[3], v: -c[1], show: String(c[1]), small: c[2], sub: 'Vue quand à l’écran ?' })),
+    ask: up => (up ? 'Quelle Pierre apparaît <em>en premier</em> à l’écran ?' : 'Quelle Pierre apparaît <em>le plus tard</em> à l’écran ?'),
+    short: up => (up ? 'Vue en premier' : 'Vue plus tard'),
+    far: (a, b) => Math.abs(a.v - b.v) >= 1,
+  },
 };
+// les films du premier week-end n'affichent pas l'année (trop d'indice)
+CATS.open.items.forEach(o => { o.kind = 'Film'; });
+// pour les catégories « en premier », la plus grande valeur gagne quand up est vrai : on a déjà inversé le signe.
+// Exception : comics et MCU gardent l'année telle quelle (up = « le plus tard »).
+const TIER_WEIGHT = s => [Math.max(0.35, 1 - s * 0.07), 1, Math.min(1.8, 0.35 + s * 0.14)];
 
 const EMBLEMS = {
   ring: '<circle cx="50" cy="50" r="40" fill="none" stroke="#fff" stroke-width="6"/><circle cx="50" cy="50" r="24" fill="none" stroke="#fff" stroke-width="4"/><polygon points="50,34 64,58 36,58" fill="#fff"/>',
@@ -174,14 +230,16 @@ export function mount(root) {
     function pickQuestion() {
       let key = 'box';
       for (let tries = 0; tries < 10; tries++) {
-        const total = Object.values(CATS).reduce((a, c) => a + c.w, 0);
+        const tw = TIER_WEIGHT(streak);
+        const wOf = c => c.w * tw[c.tier];
+        const total = Object.values(CATS).reduce((a, c) => a + wOf(c), 0);
         let r = Math.random() * total, acc = 0;
-        for (const [k, c] of Object.entries(CATS)) { acc += c.w; if (r <= acc) { key = k; break; } }
+        for (const [k, c] of Object.entries(CATS)) { acc += wOf(c); if (r <= acc) { key = k; break; } }
         if (!lastKeys.includes(key)) break;
       }
       lastKeys = [...lastKeys, key].slice(-2);
       const cat = CATS[key];
-      const up = Math.random() < (key === 'comic' || key === 'mcu' ? 0.4 : 0.6);
+      const up = Math.random() < (key === 'comic' || key === 'mcu' ? 0.4 : key === 'year' || key === 'chrono' || key === 'stones' ? 0.65 : 0.6);
       for (let tries = 0; tries < 80; tries++) {
         const a = cat.items[Math.floor(Math.random() * cat.items.length)];
         if (recent.includes(a.name) && tries < 60) continue;
@@ -333,3 +391,4 @@ export function mount(root) {
     },
   };
 }
+export { CATS };

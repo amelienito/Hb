@@ -199,3 +199,52 @@ export const CAST = [
   ['Vanessa Kirby', 1988, 'Sue Storm', 'fantastic'],
   ['Oscar Isaac', 1979, 'Marc Spector', 'street'],
 ];
+
+// Données « pointues », alignées sur l'ordre de FILMS (vérifiées : Wikipédia EN, Box Office Mojo,
+// The Numbers, Rotten Tomatoes, chronologie officielle Marvel de 2023). null = donnée ambiguë, jamais posée.
+// Tomatometer (%) et marge d'incertitude (le score bouge selon la date).
+export const RT = [94, 68, 72, 77, 80, 91, 79, 67, 90, 91, 75, 83, 90, 89, 85, 92, 93, 96, 85, 87, 79, 94, 91, 79, 92, 48, 93, 73, 64, 84, 46, 82, 63, 77, 46, 88, 86];
+export const RT_TOL = { 25: 1, 32: 1, 34: 3, 36: 2 };
+// Premier week-end aux États-Unis et au Canada, 3 jours, en M$ (Iron Man, Far From Home, Shang-Chi
+// et Brave New World exclus : chiffres qui varient selon la définition du week-end).
+export const OPENING = [null, 55.4, 128.1, 65.7, 65.1, 207.4, 174.1, 85.7, 95.0, 94.3, 191.3, 57.2, 179.1, 85.1, 146.5, 117.0, 122.7, 202.0, 257.7, 75.8, 153.4, 357.1, null, 80.4, null, 71.3, 260.1, 187.4, 144.2, 181.3, 106.1, 118.4, 46.1, 211.4, null, 74.3, 117.6];
+export const PHASE = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6];
+// Scènes en cours et après le générique (L'Incroyable Hulk exclu : définition discutée).
+export const CREDITS = [1, null, 1, 1, 1, 2, 1, 2, 2, 2, 1, 2, 2, 2, 5, 2, 2, 2, 1, 2, 2, 0, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 1, 1, 1, 2, 2];
+// Chronologie interne : [valeur triable, incertitude, libellé]. Deux films ne sont comparés que si
+// l'écart dépasse la somme des incertitudes (Iron Man 2 / Hulk / Thor, Iron Man 3 / Thor 2, etc. jamais opposés).
+// Deadpool & Wolverine et Fantastic Four (autres Terres) exclus.
+export const CHRONO = [
+  [2008.3, 0, '2008, selon la chronologie officielle'], [2010.3, 0.6, '2010'], [2010.3, 0.6, '2010'], [2010.3, 0.6, '2010'],
+  [1944, 0.5, '1943 à 1945'], [2012.3, 0, 'printemps 2012'], [2013.95, 1, 'Noël 2013'], [2013.8, 0.15, 'automne 2013'],
+  [2014.3, 0.05, 'printemps 2014'], [2014.55, 0.05, 'été 2014'], [2015.3, 0.05, 'printemps 2015'], [2015.6, 0.05, 'été 2015'],
+  [2016.3, 0.05, 'printemps 2016'], [2016.9, 0.2, 'fin 2016'], [2014.8, 0.05, 'automne 2014'], [2016.85, 0.1, 'automne 2016'],
+  [2017.8, 0.05, 'automne 2017'], [2016.6, 0.05, 'été 2016'], [2018.3, 0.02, 'printemps 2018'], [2018.2, 0.02, 'printemps 2018, juste avant Infinity War'],
+  [1995, 0, '1995'], [2023.8, 0.05, 'automne 2023'], [2024.5, 0.05, 'été 2024'], [2016.42, 0.05, 'printemps 2016'],
+  [2024.2, 0.05, 'printemps 2024'], [2024.75, 0.1, 'automne 2024'], [2024.85, 0.05, 'fin 2024'], [2024.95, 0, 'fin 2024, après No Way Home'],
+  [2025.8, 0.3, 'automne 2025'], [2025.3, 0.2, 'printemps 2025'], [2026.2, 0.3, '2026'], [2026.4, 0.3, '2026'],
+  [2026.6, 0.3, '2026'], null, [2026.95, 0.1, 'fin 2026'], [2027.4, 0.1, '2027'], null,
+];
+
+// Pierres d'Infinité : première apparition à l'écran, dans l'ordre de sortie des films.
+export const STONES = [
+  ['Pierre de l’Espace', 2011, 'Thor (après le générique), dans le Tesseract', 'cosmic'],
+  ['Pierre de l’Esprit', 2012, 'Avengers, dans le sceptre de Loki', 'thor'],
+  ['Pierre de la Réalité', 2013, 'Thor : Le Monde des ténèbres, l’Éther', 'thor'],
+  ['Pierre du Pouvoir', 2014, 'Les Gardiens de la Galaxie, dans l’Orbe', 'guardians'],
+  ['Pierre du Temps', 2016, 'Doctor Strange, dans l’Œil d’Agamotto', 'strange'],
+  ['Pierre de l’Âme', 2018, 'Avengers : Infinity War, sur Vormir', 'cosmic'],
+];
+
+// Nombre de longs métrages du MCU où apparaît le personnage, caméos, voix et archives compris
+// (Wikipédia EN). [personnage, films, incertitude, famille]. Cas discutés (Fury, Sam Wilson, Thanos, Wong) exclus.
+export const APPEARANCES = [
+  ['Tony Stark', 11, 0, 'iron'], ['Steve Rogers', 11, 1, 'cap'], ['Thor', 10, 0, 'thor'], ['Bruce Banner', 9, 0, 'hulk'],
+  ['Natasha Romanoff', 10, 0, 'widow'], ['Clint Barton', 6, 0, 'widow'], ['Loki', 8, 0, 'thor'], ['Bucky Barnes', 9, 0, 'cap'],
+  ['Wanda Maximoff', 6, 0, 'mutant'], ['La Vision', 3, 0, 'avengers'], ['Peter Parker (Tom Holland)', 6, 0, 'spider'], ['Stephen Strange', 6, 0, 'strange'],
+  ['T’Challa', 5, 0, 'panther'], ['Okoye', 4, 0, 'panther'], ['Shuri', 4, 0, 'panther'], ['Carol Danvers', 4, 0, 'cosmic'],
+  ['Scott Lang', 5, 0, 'ant'], ['Hope van Dyne', 4, 0, 'ant'], ['Peter Quill', 6, 0, 'guardians'], ['Gamora', 5, 0, 'guardians'],
+  ['Rocket', 6, 0, 'guardians'], ['Groot', 6, 0, 'guardians'], ['Drax', 6, 0, 'guardians'], ['Nebula', 6, 0, 'guardians'],
+  ['Happy Hogan', 8, 0, 'iron'], ['Pepper Potts', 7, 0, 'iron'], ['James Rhodes', 8, 0, 'iron'], ['Valkyrie', 4, 0, 'thor'],
+  ['Phil Coulson', 5, 0, 'widow'], ['Maria Hill', 5, 0, 'widow'], ['Everett Ross', 3, 0, 'panther'], ['Thaddeus Ross', 6, 0, 'cap'],
+];

@@ -17,7 +17,7 @@ export const SAVE_KEY = 'reacteur-v2';
 const SPEED = 22; // vitesse de propagation du faisceau, en cases par seconde
 
 const HINTS = {
-  0: 'Touche un miroir pour le faire pivoter. Allume chaque cœur.',
+  0: 'Touche un miroir pour le faire pivoter. Allume chaque cœur avant que Flo rentre.',
   1: 'À chaque coup, le faisceau repart de l’émetteur : regarde où il file.',
   3: 'Un socle vide accepte un miroir. Touche-le pour en poser un.',
   4: 'La balle de Talya divise le faisceau en deux.',
@@ -295,6 +295,16 @@ export function mount(root) {
 
   load(li);
   raf = requestAnimationFrame(frame);
+  // petite mise en contexte, la première fois
+  if (!save.intro) {
+    let close;
+    close = sheet([
+      h('h2', {}, 'Le câble du Mac mini.'),
+      h('p', {}, 'Talya a mangé le câble du Mac mini de Florian. Heureusement, elle s’y connaît en informatique : si elle rétablit le courant avant que Flo rentre, il ne saura jamais rien.'),
+      h('p', {}, 'Fais pivoter les miroirs pour guider le laser jusqu’à chaque cœur. Les capteurs rouges coupent tout.'),
+      h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: () => { save.intro = true; set(SAVE_KEY, save); close(); } }, 'Au boulot')),
+    ], 'rx-sheet');
+  }
   if (window.matchMedia('(pointer: fine)').matches) canvas.focus({ preventScroll: true });
 
   return {

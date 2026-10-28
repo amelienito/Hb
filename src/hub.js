@@ -33,7 +33,7 @@ export function mount(root) {
   );
 
   const hero = h('section', { class: 'hero' },
-    h('div', { class: 'hero-top' }, h('span', { class: 'rp-tag', title: 'Role play' }, 'RP'), soundButton()),
+    h('div', { class: 'hero-top' }, h('span', { class: 'rp-tag' }, 'Joyeux anniversaire Flo'), soundButton()),
     h('div', { class: 'wordmark-wrap' }, word),
     h('p', { class: 'tagline', html: 'Un jeu de rôle où <strong>Talya décide de tout.</strong> Comme d’habitude.' }),
     h('div', { class: 'bust', html: bustSVG() }),
@@ -47,7 +47,7 @@ export function mount(root) {
     h('p', {}, 'Conçu par Amélien. Approuvé par Talya, sous réserve.'),
   );
 
-  root.append(hero, missions, foot);
+  root.append(hero, missions, musicSection(), foot);
   if (location.hash === '#/missions') missions.scrollIntoView();
 
   const stop = startPreview(root.querySelector('.m-reacteur canvas'));
@@ -64,7 +64,7 @@ function reacteurCard() {
     h('div', { class: 'm-art' }, h('canvas', { 'aria-hidden': 'true' })),
     h('div', { class: 'm-body' },
       h('h3', {}, 'Réacteur'),
-      h('p', {}, 'Talya a rongé les câbles de l’atelier. Rallume le réacteur avant que Florian rentre.'),
+      h('p', {}, 'Talya a mangé le câble du Mac mini. Heureusement, elle s’y connaît en informatique : tout est sauvé si elle répare avant que Flo rentre.'),
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, progress), h('span', { class: 'm-play' }, done ? 'Continuer' : 'Jouer'))));
 }
 
@@ -81,6 +81,29 @@ function rivauxCard() {
       h('h3', {}, 'Rivaux Marvel'),
       h('p', {}, 'Soixante secondes, deux choix à chaque fois, et un rival qui ne lâche rien.'),
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, best ? `Record ${fmt(best)}` : 'Aucun duel joué'), h('span', { class: 'm-play' }, 'Jouer'))));
+}
+
+// Lecteur de l'album Mode Créatif : le lecteur Spotify ne se charge qu'à la demande.
+const ALBUM = {
+  link: 'https://distrokid.com/hyperfollow/amlien/mode-cratif',
+  spotify: 'https://open.spotify.com/embed/album/2XBxyaoRctkr9uteKifL4Z?utm_source=generator&theme=0',
+  cover: 'https://distrokid.imgix.net/http%3A%2F%2Fgather.fandalism.com%2F10598506--9A21CD12-16C9-422F-87F4B22D118FB30B--0--4928066--MODECREATIF.jpg?fm=jpg&q=75&w=800&s=60972a3227b566cdb9fd6fe272b8da98',
+};
+function musicSection() {
+  const slot = h('div', { class: 'mc-slot' });
+  const play = h('button', { class: 'btn mc-play', type: 'button', onclick: () => {
+    slot.innerHTML = '';
+    slot.append(h('iframe', { src: ALBUM.spotify, title: 'Mode Créatif sur Spotify', width: '100%', height: '352', loading: 'lazy', allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture', frameborder: '0' }));
+    play.remove();
+  } }, h('span', { class: 'mc-tri', 'aria-hidden': 'true' }), 'Écouter ici');
+  return h('section', { class: 'music' },
+    h('div', { class: 'mc-card' },
+      h('div', { class: 'mc-cover' }, h('span', { 'aria-hidden': 'true' }, 'MC'), h('img', { src: ALBUM.cover, alt: 'Pochette de Mode Créatif', width: '96', height: '96', loading: 'lazy', onerror: e => e.target.remove() })),
+      h('div', { class: 'mc-info' },
+        h('h2', {}, 'Mode Créatif'),
+        h('p', {}, 'L’album d’Amélien, la bande-son officieuse de tes 30 ans.'),
+        h('div', { class: 'mc-actions' }, play, h('a', { class: 'btn ghost', href: ALBUM.link, target: '_blank', rel: 'noopener' }, 'Toutes les plateformes')))),
+    slot);
 }
 
 function progressOf(key, count) {
