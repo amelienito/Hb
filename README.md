@@ -8,8 +8,9 @@ En ligne : https://amelienito.github.io/Hb/
 
 - **Réacteur** : puzzle de lasers, 8 niveaux puis 2 bonus au choix. On fait pivoter les miroirs pour allumer tous les cœurs sans toucher les capteurs ; le faisceau repart de l'émetteur à chaque coup.
 - **Rivaux Marvel** : duel de 60 secondes contre un fantôme (box-office, durées, sorties, casting, comics, arrivées dans le MCU).
-- **Flair** : enquête au nez dans une forêt de nuit, 5 affaires. On maintient « Flairer » pour voir les odeurs et on suit la bonne.
+- **Flair** : enquête au nez dans une forêt de nuit, 5 affaires, 3 cœurs. On maintient « Flairer » pour voir les odeurs et on suit la bonne, entre hérissons, renards, guêpes, moufettes et sangliers.
 - **Opération chaussette** : infiltration, 5 niveaux. Voler les chaussettes sans entrer dans le champ de vision, puis rentrer au panier.
+- **Tu préfères ?** : 12 dilemmes Marvel et 8 hot takes, puis un profil de fan. Les réponses d'Amélien peuvent être ajoutées dans `src/games/prefs/data.js` (`AMELIEN`) pour afficher le taux d'accord.
 
 ## Organisation
 

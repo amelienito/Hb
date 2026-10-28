@@ -7,6 +7,7 @@ const ROUTES = {
   rivaux: () => import('./games/rivaux/game.js'),
   chaussette: () => import('./games/chaussette/game.js'),
   flair: () => import('./games/flair/game.js'),
+  prefs: () => import('./games/prefs/game.js'),
 };
 
 const app = document.getElementById('app');

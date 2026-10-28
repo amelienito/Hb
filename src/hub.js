@@ -8,6 +8,7 @@ import { drawBoard } from './games/reacteur/render.js';
 import { MAIN, SAVE_KEY } from './games/reacteur/game.js';
 import { SAVE_KEY as FLAIR_KEY, COUNT as FLAIR_COUNT } from './games/flair/game.js';
 import { SAVE_KEY as CS_KEY, COUNT as CS_COUNT } from './games/chaussette/game.js';
+import { SAVE_KEY as PF_KEY } from './games/prefs/game.js';
 
 let booted = false;
 
@@ -29,7 +30,7 @@ export function mount(root) {
 
   const missions = h('section', { class: 'missions', id: 'missions' },
     h('h2', {}, 'Missions'),
-    h('div', { class: 'mission-list' }, reacteurCard(), rivauxCard(), flairCard(), chaussetteCard()),
+    h('div', { class: 'mission-list' }, reacteurCard(), rivauxCard(), flairCard(), chaussetteCard(), prefsCard()),
   );
 
   const hero = h('section', { class: 'hero' },
@@ -155,6 +156,17 @@ function chaussetteCard() {
       h('h3', {}, 'Opération chaussette'),
       h('p', {}, 'Voler toutes les chaussettes de l’appartement sans croiser le regard de Florian. Puis rentrer au panier, l’air de rien.'),
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, p ? `Niveaux : ${p}` : `${CS_COUNT} niveaux`), h('span', { class: 'm-play' }, p ? 'Continuer' : 'Jouer'))));
+}
+
+function prefsCard() {
+  const last = get(PF_KEY, null);
+  return h('a', { class: 'mission playable m-prefs', href: '#/prefs' },
+    h('div', { class: 'm-art' }, h('div', { class: 'm-art-inner pf-art', 'aria-hidden': 'true' },
+      h('div', { class: 'x' }, 'L’armure Mark 85'), h('div', { class: 'o' }, 'OU'), h('div', { class: 'y' }, 'Soulever Mjolnir'))),
+    h('div', { class: 'm-body' },
+      h('h3', {}, 'Tu préfères ?'),
+      h('p', {}, '12 dilemmes Marvel et 8 hot takes. À la fin, ton profil de fan, à défendre devant Amélien.'),
+      h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, last && last.match ? `Avenger intérieur : ${last.match}` : '20 questions'), h('span', { class: 'm-play' }, last ? 'Rejouer' : 'Jouer'))));
 }
 
 function lockedCard(title, line, icon) {
