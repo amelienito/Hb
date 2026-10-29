@@ -60,7 +60,7 @@ export function mount(root) {
     const tag = tagEl.getBoundingClientRect(), b = bustEl.getBoundingClientRect();
     if (b.left >= tag.right + 6) return; // à droite du texte : rien à craindre
     const room = b.bottom - (tag.bottom + 22);
-    if (b.height > room) bustEl.style.width = Math.max(130, room * (320 / 380)) + 'px';
+    if (b.height > room) bustEl.style.width = Math.max(80, room * (320 / 380)) + 'px';
   }
   requestAnimationFrame(fitBust);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitBust);

@@ -114,7 +114,8 @@ button { font: inherit; color: inherit; }
 
 .tagline {
   position: relative; z-index: 3;
-  margin: 22px 0 0; max-width: 17em;
+  /* les oreilles du titre dépassent sous les lettres (et bougent) : la marge suit la taille du titre */
+  margin: calc(clamp(104px, 33vw, 230px) * .13 + 20px) 0 0; max-width: 17em;
   font-size: 19px; line-height: 1.4; color: var(--brume);
 }
 .tagline strong { color: var(--pelage); font-weight: 600; }
