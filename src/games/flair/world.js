@@ -149,7 +149,9 @@ function tryBuild(c, seed) {
 
   const objects = [{ kind: c.target, at: target, real: true }, ...decoys.map(d => ({ kind: d.obj, at: d.at, real: false }))];
   const length = polyLength(trails[0].pts);
-  return { w, h, tiles, at, start, target, trails, objects, length, solid: (x, y) => !passable(x, y), slow: (x, y) => at(x, y) === 'b' };
+  // troncs et rochers sont ronds : la collision suit le dessin et on ne bute plus sur un coin invisible
+  const solid = (x, y) => { const t = at(x, y); return t === 'T' ? 0.46 : t === 'R' ? 0.36 : false; };
+  return { w, h, tiles, at, start, target, trails, objects, length, solid, slow: (x, y) => at(x, y) === 'b' };
 }
 
 // Centres de cases → courbe adoucie (Chaikin), avec une légère ondulation.

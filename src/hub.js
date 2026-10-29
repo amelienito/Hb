@@ -5,10 +5,11 @@ import { get } from './core/store.js';
 import { sfx } from './core/sound.js';
 import { parse, trace } from './games/reacteur/engine.js';
 import { drawBoard } from './games/reacteur/render.js';
-import { MAIN, SAVE_KEY } from './games/reacteur/game.js';
+import { MAIN, BONUS, loadSave } from './games/reacteur/game.js';
 import { SAVE_KEY as FLAIR_KEY, COUNT as FLAIR_COUNT } from './games/flair/game.js';
 import { SAVE_KEY as CS_KEY, COUNT as CS_COUNT } from './games/chaussette/game.js';
 import { SAVE_KEY as PF_KEY } from './games/prefs/game.js';
+import { SAVE_KEY as IV_KEY, COUNT as IV_COUNT } from './games/interview/game.js';
 
 let booted = false;
 
@@ -30,7 +31,7 @@ export function mount(root) {
 
   const missions = h('section', { class: 'missions', id: 'missions' },
     h('h2', {}, 'Missions'),
-    h('div', { class: 'mission-list' }, reacteurCard(), rivauxCard(), flairCard(), chaussetteCard(), prefsCard()),
+    h('div', { class: 'mission-list' }, reacteurCard(), rivauxCard(), flairCard(), chaussetteCard(), prefsCard(), interviewCard()),
   );
 
   const hero = h('section', { class: 'hero' },
@@ -45,7 +46,7 @@ export function mount(root) {
 
   const foot = h('footer', { class: 'hub-foot' },
     h('p', {}, 'Pour les 30 ans de Florian.'),
-    h('p', {}, 'Conçu par Amélien. Approuvé par Talya, sous réserve.'),
+    h('p', {}, 'Conçu par Amélien, approuvé par Talya.'),
   );
 
   root.append(hero, missions, musicSection(), foot);
@@ -56,16 +57,16 @@ export function mount(root) {
 }
 
 function reacteurCard() {
-  const save = get(SAVE_KEY, { best: {} });
-  const best = save.best || {};
-  const done = MAIN.filter((_, n) => best[n] != null).length;
-  const bonus = [MAIN.length, MAIN.length + 1].filter(n => best[n] != null).length;
-  const progress = done === 0 ? `${MAIN.length} niveaux et 2 bonus` : done < MAIN.length ? `${done} sur ${MAIN.length} réussis` : bonus < 2 ? `Terminé, bonus ${bonus} sur 2` : 'Tout est réussi, bonus compris';
+  const save = loadSave();
+  const ok = L => save.best[L.name] != null || !!save.answered[L.name];
+  const done = MAIN.filter(ok).length;
+  const bonus = BONUS.filter(ok).length;
+  const progress = done === 0 ? `${MAIN.length} niveaux et ${BONUS.length} bonus` : done < MAIN.length ? `${done} sur ${MAIN.length} réussis` : bonus < BONUS.length ? `Terminé, bonus ${bonus} sur ${BONUS.length}` : 'Tout est réussi, bonus compris';
   return h('a', { class: 'mission playable m-reacteur', href: '#/reacteur' },
     h('div', { class: 'm-art' }, h('canvas', { 'aria-hidden': 'true' })),
     h('div', { class: 'm-body' },
       h('h3', {}, 'Réacteur'),
-      h('p', {}, 'Talya a mangé le câble du Mac mini. Heureusement, elle s’y connaît en informatique : tout est sauvé si elle répare avant que Flo rentre.'),
+      h('p', {}, 'Talya a mangé le câble du Mac mini. Elle a jusqu’au retour de Flo pour tout réparer, l’air de rien.'),
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, progress), h('span', { class: 'm-play' }, done ? 'Continuer' : 'Jouer'))));
 }
 
@@ -84,17 +85,33 @@ function rivauxCard() {
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, best ? `Record ${fmt(best)}` : 'Aucun duel joué'), h('span', { class: 'm-play' }, 'Jouer'))));
 }
 
-// Lecteur de l'album Mode Créatif : le lecteur Spotify ne se charge qu'à la demande.
+// Lecteur de l'album Mode Créatif : YouTube par défaut (écoute complète sans compte),
+// Spotify en option. Rien ne se charge avant le clic.
 const ALBUM = {
   link: 'https://distrokid.com/hyperfollow/amlien/mode-cratif',
+  youtube: 'https://www.youtube-nocookie.com/embed/videoseries?list=PL42zoNp9dj5BCSalsdGRNH0rQ8HqKd7cY',
   spotify: 'https://open.spotify.com/embed/album/2XBxyaoRctkr9uteKifL4Z?utm_source=generator&theme=0',
   cover: 'https://distrokid.imgix.net/http%3A%2F%2Fgather.fandalism.com%2F10598506--9A21CD12-16C9-422F-87F4B22D118FB30B--0--4928066--MODECREATIF.jpg?fm=jpg&q=75&w=800&s=60972a3227b566cdb9fd6fe272b8da98',
 };
 function musicSection() {
   const slot = h('div', { class: 'mc-slot' });
+  const frames = {
+    youtube: () => h('iframe', { src: ALBUM.youtube, title: 'Mode Créatif sur YouTube', class: 'mc-yt', loading: 'lazy', allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share', referrerpolicy: 'strict-origin-when-cross-origin', allowfullscreen: true, frameborder: '0' }),
+    spotify: () => h('iframe', { src: ALBUM.spotify, title: 'Mode Créatif sur Spotify', class: 'mc-sp', height: '352', loading: 'lazy', allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture', frameborder: '0' }),
+  };
+  const tabs = h('div', { class: 'mc-tabs', role: 'tablist', 'aria-label': 'Lecteur' });
+  const show = which => {
+    tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', b.dataset.p === which ? 'true' : 'false'));
+    const old = slot.querySelector('iframe');
+    const f = frames[which]();
+    if (old) old.replaceWith(f); else slot.append(f);
+  };
+  tabs.append(
+    h('button', { type: 'button', role: 'tab', 'data-p': 'youtube', onclick: () => show('youtube') }, 'YouTube'),
+    h('button', { type: 'button', role: 'tab', 'data-p': 'spotify', onclick: () => show('spotify') }, 'Spotify'));
   const play = h('button', { class: 'btn mc-play', type: 'button', onclick: () => {
-    slot.innerHTML = '';
-    slot.append(h('iframe', { src: ALBUM.spotify, title: 'Mode Créatif sur Spotify', width: '100%', height: '352', loading: 'lazy', allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture', frameborder: '0' }));
+    slot.append(tabs);
+    show('youtube');
     play.remove();
   } }, h('span', { class: 'mc-tri', 'aria-hidden': 'true' }), 'Écouter ici');
   return h('section', { class: 'music' },
@@ -146,7 +163,7 @@ function chaussetteCard() {
     ${planks}
     <defs><radialGradient id="cscone" cx="0" cy="0.5" r="1"><stop offset="0" stop-color="#ffd696" stop-opacity=".45"/><stop offset="1" stop-color="#ffd696" stop-opacity="0"/></radialGradient></defs>
     <polygon points="92,110 300,30 300,190" fill="url(#cscone)"/>
-    <g transform="translate(80 110)"><ellipse cx="0" cy="0" rx="11" ry="17" fill="#c0533b"/><circle cx="2" cy="0" r="9" fill="#3a2a20"/></g>
+    <g transform="translate(80 110)"><ellipse cx="0" cy="0" rx="11" ry="17" fill="#3f8a52"/><circle cx="2" cy="0" r="9" fill="#3a2a20"/></g>
     <rect x="250" y="150" width="90" height="56" rx="8" fill="#8c6340"/>
     <g transform="translate(330 70) rotate(-25)"><path d="M-6 -16h12v18q12 2 10 10q-4 6-14 2l-8-6z" fill="#e9e4da"/><rect x="-6" y="-16" width="12" height="4" fill="#c0533b"/></g>
   </svg>`;
@@ -167,6 +184,19 @@ function prefsCard() {
       h('h3', {}, 'Tu préfères ?'),
       h('p', {}, '12 dilemmes Marvel et 8 hot takes. À la fin, ton profil de fan, à défendre devant Amélien.'),
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, last && last.match ? `Avenger intérieur : ${last.match}` : '20 questions'), h('span', { class: 'm-play' }, last ? 'Rejouer' : 'Jouer'))));
+}
+
+function interviewCard() {
+  const read = !!get(IV_KEY, {}).read;
+  return h('a', { class: 'mission playable m-interview', href: '#/interview' },
+    h('div', { class: 'm-art' }, h('div', { class: 'm-art-inner iv-art', 'aria-hidden': 'true' },
+      h('span', { class: 'k' }, 'Cul7ure · Entretien'),
+      h('span', { class: 't' }, 'Woof.'),
+      h('span', { class: 's' }, 'Talya se confie comme jamais.'))),
+    h('div', { class: 'm-body' },
+      h('h3', {}, 'L’interview'),
+      h('p', {}, 'Figure majeure de la pop lyrique franco-canine, Talya répond enfin aux questions d’Amélien. Sans langue de bois.'),
+      h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, read ? 'Déjà lue' : `${IV_COUNT} questions`), h('span', { class: 'm-play' }, read ? 'Relire' : 'Lire'))));
 }
 
 function lockedCard(title, line, icon) {

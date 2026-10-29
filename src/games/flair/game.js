@@ -6,6 +6,16 @@ import { sfx } from '../../core/sound.js';
 import { moveCircle, createStick, fitCanvas, drawTalyaTop, lerpAngle, rng } from '../../core/topdown.js';
 import { CASES, OBJECTS, buildCase } from './world.js';
 import { THREATS, NAMES, spawn, updateBeasts, drawBeast, drawEyes, drawZone, drawItem } from './beasts.js';
+import { getMode, setMode, modeSwitch } from '../../core/modes.js';
+import { nextMissionButton } from '../../core/nav.js';
+
+// Modes : nombre de cœurs, vitesse et vigilance des bêtes, durée du souffle
+const MODE = {
+  facile: { hearts: 5, beast: 0.8, sight: 0.8, breath: 6.5 },
+  normal: { hearts: 3, beast: 1, sight: 1, breath: 4.5 },
+  difficile: { hearts: 2, beast: 1.15, sight: 1.2, breath: 3.6 },
+};
+const mode = () => MODE[getMode('flair')];
 
 export const SAVE_KEY = 'flair';
 export const COUNT = CASES.length;
@@ -22,8 +32,11 @@ export function mount(root) {
 
   const levelEl = h('div', { class: 'fl-level' });
   const chipEl = h('div', { class: 'fl-chip', title: 'Odeur à suivre' });
-  const breathEl = h('div', { class: 'fl-breath', title: 'Souffle' }, h('i'));
-  const timeEl = h('div', { class: 'fl-time' }, '0,0');
+  const breathEl = h('div', { class: 'fl-breath', title: 'Flair restant', role: 'meter', 'aria-label': 'Flair restant' }, h('i'));
+  const timeEl = h('b', {}, '0,0');
+  const penEl = h('span', { class: 'fl-pen', 'aria-hidden': 'true' });
+  const clockEl = h('div', { class: 'fl-time' }, h('small', {}, 'ton temps'), timeEl, penEl);
+  const modeEl = modeSwitch('flair', () => changeMode());
   const heartsEl = h('div', { class: 'fl-hearts', 'aria-label': 'Vies' });
   const bonesEl = h('div', { class: 'fl-bones', 'aria-label': 'Os dorés' });
   const powerEl = h('div', { class: 'fl-power' });
@@ -36,17 +49,28 @@ export function mount(root) {
 
   root.append(
     h('header', { class: 'g-bar' }, backButton(), h('div', { class: 'g-title' }, 'Flair'), levelsBtn),
-    h('div', { class: 'fl-hud' }, levelEl, h('div', { class: 'fl-right' }, chipEl, timeEl)),
-    h('div', { class: 'fl-status' }, heartsEl, bonesEl, powerEl, breathEl),
+    h('div', { class: 'fl-hud' }, levelEl, h('div', { class: 'fl-right' }, chipEl, clockEl)),
+    h('div', { class: 'fl-status' }, heartsEl, bonesEl, powerEl, h('div', { class: 'fl-breath-wrap' }, h('span', {}, 'Flair restant'), breathEl)),
     stage,
     h('div', { class: 'fl-tools' }, hintEl, soundButton()),
+    h('div', { class: 'fl-mode' }, modeEl),
   );
 
   const ctx = canvas.getContext('2d');
   const stick = createStick(stage);
   let li = isOpen(save.last || 0) ? save.last || 0 : 0;
   let C, world, talya, objects, trails, time, penalty, wrong, state, breath, lock, sniffing, flair, sinceSniff, bg, ts, W, H, cam, particles, toastTimer, alive = true;
-  let beasts, zones, items, hearts, bones, inv, noseSat, superNose, waspT;
+  let beasts, zones, items, hearts, maxHearts = 3, bones, inv, noseSat, superNose, waspT;
+  const losses = {};
+  // changer de mode en pleine affaire : on ajuste les cœurs sans repartir de zéro
+  function changeMode() {
+    if (!world) return;
+    const nm = mode().hearts;
+    hearts = Math.max(1, Math.min(nm, hearts + nm - maxHearts));
+    maxHearts = nm;
+    hudKey = '';
+    paintHud();
+  }
 
   // --- bouton Flairer (maintenu) + clavier ---
   let sniffHeld = false, keyHeld = false;
@@ -72,7 +96,7 @@ export function mount(root) {
     time = 0; penalty = 0; wrong = 0; breath = 1; lock = false; sniffing = false; flair = 0; sinceSniff = 9;
     particles = []; bg = null; cam = { x: talya.x, y: talya.y };
     ({ beasts, zones, items } = spawn(world, n, C.seed));
-    hearts = 3; bones = 0; inv = 0; noseSat = 0; superNose = 0; waspT = 0; hudKey = '';
+    maxHearts = mode().hearts; hearts = maxHearts; bones = 0; inv = 0; noseSat = 0; superNose = 0; waspT = 0; hudKey = '';
     state = 'intro';
     levelEl.innerHTML = '';
     levelEl.append(h('small', {}, `Affaire ${n + 1} sur ${COUNT}`), C.name);
@@ -91,7 +115,8 @@ export function mount(root) {
       h('p', {}, C.intro),
       h('div', { class: 'fl-sample' }, h('span', { class: 'fl-sample-g', html: glyphSVG(C.scent[0], C.scent[1], 34) }),
         h('div', {}, h('b', {}, 'Odeur à suivre'), h('span', {}, `Des ${plural(C.scent[0])} de cette couleur. Les autres odeurs mènent ailleurs.`))),
-      h('p', { class: 'fl-danger' }, dangerLine(li)),
+      h('p', { class: 'fl-danger' }, dangerLine(li, mode().hearts)),
+      h('p', { class: 'fl-rule' }, `Pas de limite de temps : le chrono sert à te classer. Si tu suis une fausse piste jusqu’au bout, ${PENALTY} secondes de pénalité s’ajoutent à ton temps.`),
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: () => { close(); state = 'play'; } }, 'Renifler')),
     ], 'fl-sheet');
   }
@@ -102,7 +127,7 @@ export function mount(root) {
     if (key === hudKey) { timeEl.textContent = (time + penalty).toFixed(1).replace('.', ','); return; }
     hudKey = key;
     timeEl.textContent = (time + penalty).toFixed(1).replace('.', ',');
-    heartsEl.innerHTML = [0, 1, 2].map(k => `<span class="${k < hearts ? 'on' : ''}">${HEART}</span>`).join('');
+    heartsEl.innerHTML = Array.from({ length: maxHearts }, (_, k) => k).map(k => `<span class="${k < hearts ? 'on' : ''}">${HEART}</span>`).join('');
     const total = items.filter(i => i.kind === 'bone').length;
     bonesEl.innerHTML = `${BONE}<b>${bones}</b>/${total}`;
     powerEl.textContent = noseSat > 0 ? `Nez saturé ${Math.ceil(noseSat)} s` : superNose > 0 ? `Super-truffe ${Math.ceil(superNose)} s` : '';
@@ -181,7 +206,7 @@ export function mount(root) {
     inv = Math.max(0, inv - dt);
     const want = (sniffHeld || keyHeld || (bot && bot.on)) && !lock && noseSat <= 0;
     sniffing = want && breath > 0;
-    if (sniffing && superNose <= 0) { breath = Math.max(0, breath - dt / 4.5); sinceSniff = 0; if (breath === 0) { lock = true; toast('Plus de souffle. Respire un peu.'); } }
+    if (sniffing && superNose <= 0) { breath = Math.max(0, breath - dt / mode().breath); sinceSniff = 0; if (breath === 0) { lock = true; toast('Plus de flair pour l’instant. Il revient tout seul, attends un peu.'); } }
     else if (sniffing) sinceSniff = 0;
     // flairer dans le nuage d'une moufette sature le nez
     if (sniffing && !bot && zones.some(z => z.kind === 'skunk' && Math.hypot(z.x - talya.x, z.y - talya.y) < z.r)) {
@@ -207,7 +232,7 @@ export function mount(root) {
 
     // bêtes et guêpes
     const events = [];
-    const hit = updateBeasts(world, beasts, talya, dt, events);
+    const hit = updateBeasts(world, beasts, talya, dt, events, mode());
     for (const [kind] of events) { if (kind === 'boar') sfx.alarm(); else if (kind === 'fox') sfx.tick(); else if (kind === 'thud') buzz(20); }
     const safe = bot && !bot.hurt;
     if (hit && !inv && !safe) {
@@ -225,7 +250,7 @@ export function mount(root) {
       if (it.taken || Math.hypot(it.x - talya.x, it.y - talya.y) > 0.6) continue;
       it.taken = true;
       buzz(12);
-      if (it.kind === 'treat') { breath = 1; lock = false; sfx.place(); toast('Une friandise : souffle au maximum.'); }
+      if (it.kind === 'treat') { breath = 1; lock = false; sfx.place(); toast('Une friandise : ton flair est rechargé à fond.'); }
       else if (it.kind === 'bone') { bones++; sfx.lit(bones); toast(`Os doré ${bones} sur ${items.filter(i => i.kind === 'bone').length}.`); }
       else if (it.kind === 'nose') { superNose = 7; noseSat = 0; breath = 1; lock = false; sfx.win(); toast('Super-truffe : 7 secondes de flair illimité, et plus loin.'); }
       for (let k = 0; k < 16; k++) particles.push({ x: it.x, y: it.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 0.8, c: it.kind === 'bone' ? '#f2c14e' : it.kind === 'nose' ? '#ff8cc8' : '#e8c27a' });
@@ -241,7 +266,8 @@ export function mount(root) {
       wrong++; penalty += PENALTY;
       sfx.wrong(); buzz(50); talya.ears = 0.2;
       const name = OBJECTS[o.kind].name;
-      toast(`${cap(name)}. Fausse piste, +${PENALTY} s.`);
+      toast(`${cap(name)} : fausse piste. Pénalité de ${PENALTY} secondes sur ton temps.`);
+      penEl.textContent = `+${PENALTY} s`; penEl.classList.remove('pop'); void penEl.offsetWidth; penEl.classList.add('pop');
     }
     paintHud();
   }
@@ -255,20 +281,26 @@ export function mount(root) {
     sfx.wrong(); buzz(70);
     paintHud();
     if (hearts <= 0) return lost(name);
-    toast(`${cap(name)} ! Plus que ${hearts} cœur${hearts > 1 ? 's' : ''}.`);
+    toast(`${cap(name)} ! Il te reste ${hearts} cœur${hearts > 1 ? 's' : ''}.`);
   }
 
   function lost(name) {
     state = 'lost';
+    losses[li] = (losses[li] || 0) + 1;
     setTimeout(() => {
       let close;
+      const offerEasy = losses[li] >= 3 && getMode('flair') !== 'facile';
       close = sheet([
         h('p', { class: 'fl-case' }, `Affaire n°${li + 1}`),
         h('h2', {}, 'Talya rentre bredouille.'),
         h('p', {}, `C’est ${name} qui a eu le dernier mot. Elle boude dans son panier, mais elle reviendra.`),
+        offerEasy ? h('div', { class: 'easy-offer' },
+          h('b', {}, 'Passer en mode facile ?'),
+          h('span', {}, 'Pas de jugement. Cinq cœurs, des bêtes plus lentes et un flair qui dure plus longtemps. Tu peux changer de mode à tout moment.'),
+          h('button', { class: 'btn', type: 'button', onclick: () => { setMode('flair', 'facile'); modeEl.refresh(); close(); load(li, false); } }, 'Oui, mode facile')) : null,
         h('div', { class: 'actions' },
           h('button', { class: 'btn', type: 'button', onclick: () => { close(); load(li, false); } }, 'Recommencer'),
-          h('a', { class: 'btn ghost', href: '#/' }, 'Retour aux missions')),
+          h('a', { class: 'btn ghost', href: '#/missions' }, 'Retour aux missions')),
       ], 'fl-sheet');
     }, reducedMotion() ? 100 : 700);
   }
@@ -280,7 +312,7 @@ export function mount(root) {
     const total = time + penalty;
     const prev = save.best[li];
     const allBones = bones >= items.filter(i => i.kind === 'bone').length;
-    const perfect = wrong === 0 && hearts === 3 && allBones;
+    const perfect = wrong === 0 && hearts === maxHearts && allBones;
     if (!prev || total < prev.time) save.best[li] = { time: total, clean: perfect || (prev && prev.clean) };
     else if (perfect) save.best[li].clean = true;
     set(SAVE_KEY, save);
@@ -296,14 +328,15 @@ export function mount(root) {
           ? 'Talya a retrouvé le cadeau avant toi. Elle ne l’a presque pas mâchouillé.'
           : perfect ? 'Affaire parfaite : aucune fausse piste, aucune égratignure, tous les os.' : wrong === 0 ? 'Sans une seule fausse piste. Le nez le plus fin de la forêt.' : `Retrouvé, après ${wrong} détour${wrong > 1 ? 's' : ''} gourmand${wrong > 1 ? 's' : ''}.`),
         h('div', { class: 'stat-row' },
-          h('div', { class: 'stat' }, h('b', {}, total.toFixed(1).replace('.', ',') + ' s'), h('span', {}, total <= target ? 'objectif tenu' : `objectif ${target} s`)),
+          h('div', { class: 'stat' }, h('b', {}, total.toFixed(1).replace('.', ',') + ' s'), h('span', {}, (total <= target ? 'objectif tenu' : `objectif ${target} s`) + (penalty ? `, dont ${penalty} s de pénalités` : ''))),
           h('div', { class: 'stat' }, h('b', {}, `${bones}/${items.filter(i => i.kind === 'bone').length}`), h('span', {}, 'os dorés')),
           h('div', { class: 'stat' }, h('b', {}, hearts), h('span', {}, hearts > 1 ? 'cœurs restants' : 'cœur restant')),
           h('div', { class: 'stat' }, h('b', {}, wrong), h('span', {}, wrong === 1 ? 'fausse piste' : 'fausses pistes')),
           prev ? h('div', { class: 'stat' }, h('b', {}, Math.min(prev.time, total).toFixed(1).replace('.', ',') + ' s'), h('span', {}, 'record')) : null),
         h('div', { class: 'actions' },
-          last ? h('a', { class: 'btn', href: '#/' }, 'Retour aux missions') : h('button', { class: 'btn', type: 'button', onclick: () => go(li + 1) }, 'Affaire suivante'),
-          h('button', { class: 'btn ghost', type: 'button', onclick: () => go(li) }, 'Rejouer')),
+          last ? nextMissionButton('flair', true) : h('button', { class: 'btn', type: 'button', onclick: () => go(li + 1) }, 'Affaire suivante'),
+          h('button', { class: 'btn ghost', type: 'button', onclick: () => go(li) }, 'Rejouer'),
+          last ? h('a', { class: 'btn ghost', href: '#/missions' }, 'Retour aux missions') : null),
       ], 'fl-sheet');
     }, reducedMotion() ? 150 : 1100);
   }
@@ -438,11 +471,12 @@ export function mount(root) {
 const HEART = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.8 4.5c2.2 0 3.6 1.2 5.2 3 1.6-1.8 3-3 5.2-3 3.8 0 5.9 3.9 4.4 7.3C19.5 16.4 12 21 12 21z" fill="currentColor"/></svg>';
 const BONE = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M7 9.5a2.5 2.5 0 1 1 2.5-3.2l5 5a2.5 2.5 0 1 1 3.2 2.5 2.5 2.5 0 1 1-3.2 2.5l-5-5A2.5 2.5 0 1 1 7 9.5z" fill="currentColor"/></svg>';
 const DANGER_NAMES = { hedgehog: ['un hérisson', 'des hérissons'], fox: ['un renard', 'des renards'], wasps: ['un nid de guêpes', 'des guêpes'], skunk: ['une moufette', 'des moufettes'], boar: ['un sanglier', 'des sangliers'] };
-function dangerLine(n) {
+function dangerLine(n, hearts = 3) {
   const c = THREATS[n];
   const list = Object.keys(DANGER_NAMES).filter(k => c[k] > 0).map(k => DANGER_NAMES[k][c[k] > 1 ? 1 : 0]);
   const last = list.pop();
-  return `Cette nuit dans la forêt : ${list.length ? list.join(', ') + ' et ' : ''}${last}. Trois cœurs, pas un de plus.`;
+  const words = { 2: 'Deux', 3: 'Trois', 5: 'Cinq' };
+  return `Cette nuit dans la forêt : ${list.length ? list.join(', ') + ' et ' : ''}${last}. ${words[hearts] || hearts} cœurs, pas un de plus.`;
 }
 
 // --- dessins ---

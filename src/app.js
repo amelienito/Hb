@@ -8,6 +8,7 @@ const ROUTES = {
   chaussette: () => import('./games/chaussette/game.js'),
   flair: () => import('./games/flair/game.js'),
   prefs: () => import('./games/prefs/game.js'),
+  interview: () => import('./games/interview/game.js'),
 };
 
 const app = document.getElementById('app');

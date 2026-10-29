@@ -136,9 +136,10 @@ export function drawTalya(ctx, x, y, opts = {}) {
   };
   ear(15.5, -0.18, SH);
   ear(20.5, 0.08, W);
-  // œil et truffe
+  // œil et truffe. De profil vers la droite on voit son œil droit ; vers la gauche, le côté
+  // de l'œil qu'elle n'a plus, donc juste du pelage, comme en vrai.
   ctx.fillStyle = DK;
-  ctx.beginPath(); ctx.ellipse(24.5, -35 + bob, 1.6, 1.3, 0, 0, Math.PI * 2); ctx.fill();
+  if (face > 0) { ctx.beginPath(); ctx.ellipse(24.5, -35 + bob, 1.6, 1.3, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.beginPath(); ctx.ellipse(34, -32 + bob, 1.9, 1.7, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }

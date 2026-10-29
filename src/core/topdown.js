@@ -10,36 +10,83 @@ export function rng(seed) {
   };
 }
 
-// Déplace un disque de rayon r en glissant le long des cases pleines.
+// Déplace un disque de rayon r en glissant le long des obstacles.
+// solid(tx, ty) renvoie false (libre), true (case pleine) ou un nombre (obstacle rond de ce rayon,
+// centré sur la case : plante, rocher, tronc), pour que la collision colle au dessin.
+// Quand un axe bloque de justesse sur un coin, on décale légèrement l'autre axe pour contourner.
 export function moveCircle(solid, x, y, r, dx, dy) {
   const hit = (px, py) => {
-    const x0 = Math.floor(px - r), x1 = Math.floor(px + r), y0 = Math.floor(py - r), y1 = Math.floor(py + r);
+    const x0 = Math.floor(px - r - 0.5), x1 = Math.floor(px + r + 0.5), y0 = Math.floor(py - r - 0.5), y1 = Math.floor(py + r + 0.5);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
-      if (!solid(tx, ty)) continue;
-      const cx = Math.max(tx, Math.min(px, tx + 1)), cy = Math.max(ty, Math.min(py, ty + 1));
-      if ((px - cx) ** 2 + (py - cy) ** 2 < r * r) return true;
+      const s = solid(tx, ty);
+      if (!s) continue;
+      if (s === true) {
+        const cx = Math.max(tx, Math.min(px, tx + 1)), cy = Math.max(ty, Math.min(py, ty + 1));
+        if ((px - cx) ** 2 + (py - cy) ** 2 < r * r) return true;
+      } else {
+        const rr = r + s;
+        if ((px - tx - 0.5) ** 2 + (py - ty - 0.5) ** 2 < rr * rr) return true;
+      }
     }
     return false;
   };
   const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / (r * 0.5)));
   const sx = dx / steps, sy = dy / steps;
+  const NUDGE = 0.14;
   for (let k = 0; k < steps; k++) {
-    if (!hit(x + sx, y)) x += sx;
-    if (!hit(x, y + sy)) y += sy;
+    if (sx) {
+      if (!hit(x + sx, y)) x += sx;
+      else if (Math.abs(sx) > Math.abs(sy) * 0.5) {
+        // coin : on tente de glisser un peu en y pour passer
+        for (const n of [NUDGE, -NUDGE]) { if (!hit(x + sx, y + n * Math.abs(sx) * 4) && !hit(x, y + n * Math.abs(sx) * 4)) { x += sx; y += n * Math.abs(sx) * 4; break; } }
+      }
+    }
+    if (sy) {
+      if (!hit(x, y + sy)) y += sy;
+      else if (Math.abs(sy) > Math.abs(sx) * 0.5) {
+        for (const n of [NUDGE, -NUDGE]) { if (!hit(x + n * Math.abs(sy) * 4, y + sy) && !hit(x + n * Math.abs(sy) * 4, y)) { y += sy; x += n * Math.abs(sy) * 4; break; } }
+      }
+    }
   }
   return [x, y];
+}
+
+// Lancer de rayon exact sur la grille (Amanatides et Woo). Renvoie la distance parcourue avant
+// la première case opaque. Un rayon qui passe pile par un coin est arrêté si l'une des deux cases
+// voisines est opaque : on ne voit pas à travers la jointure de deux murs en diagonale.
+export function castRay(opaque, x0, y0, dx, dy, maxD) {
+  let cx = Math.floor(x0), cy = Math.floor(y0);
+  const stepX = dx > 0 ? 1 : -1, stepY = dy > 0 ? 1 : -1;
+  const tdx = dx !== 0 ? Math.abs(1 / dx) : Infinity, tdy = dy !== 0 ? Math.abs(1 / dy) : Infinity;
+  let tmx = dx !== 0 ? (dx > 0 ? cx + 1 - x0 : x0 - cx) * tdx : Infinity;
+  let tmy = dy !== 0 ? (dy > 0 ? cy + 1 - y0 : y0 - cy) * tdy : Infinity;
+  for (let guard = 0; guard < 400; guard++) {
+    let t;
+    if (Math.abs(tmx - tmy) < 1e-7) {
+      t = tmx;
+      if (t >= maxD) return maxD;
+      if (opaque(cx + stepX, cy) || opaque(cx, cy + stepY)) return t;
+      cx += stepX; cy += stepY; tmx += tdx; tmy += tdy;
+    } else if (tmx < tmy) {
+      t = tmx;
+      if (t >= maxD) return maxD;
+      cx += stepX; tmx += tdx;
+    } else {
+      t = tmy;
+      if (t >= maxD) return maxD;
+      cy += stepY; tmy += tdy;
+    }
+    if (opaque(cx, cy)) return t;
+  }
+  return maxD;
 }
 
 // Ligne de vue entre deux points (en cases), bloquée par opaque(tx, ty).
 export function lineOfSight(opaque, x0, y0, x1, y1) {
   const dx = x1 - x0, dy = y1 - y0;
-  const dist = Math.hypot(dx, dy);
-  const n = Math.ceil(dist * 4);
-  for (let k = 1; k < n; k++) {
-    const px = x0 + (dx * k) / n, py = y0 + (dy * k) / n;
-    if (opaque(Math.floor(px), Math.floor(py))) return false;
-  }
-  return true;
+  const d = Math.hypot(dx, dy);
+  if (d < 1e-6) return true;
+  return castRay(opaque, x0, y0, dx / d, dy / d, d) >= d - 1e-6;
 }
 
 // A* sur grille 4-connexe. cost(x, y) renvoie Infinity pour un mur.

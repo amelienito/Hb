@@ -15,7 +15,7 @@ export function solve(L, margin = MARGIN, scale = 1) {
   const seen = (x, y, t) => world.guards.some(g => sees(world, g, guardPose(g, t), x, y, margin));
   for (const g of world.guards) for (let t = 0; t < g.period; t += 0.1) {
     const p = guardPose(g, t);
-    if (world.solid(Math.floor(p.x), Math.floor(p.y)) || world.hide(Math.floor(p.x), Math.floor(p.y))) return { ok: false, why: `garde dans un obstacle en (${p.x.toFixed(1)}, ${p.y.toFixed(1)})` };
+    if (world.blocked(Math.floor(p.x), Math.floor(p.y)) || world.hide(Math.floor(p.x), Math.floor(p.y))) return { ok: false, why: `garde dans un obstacle en (${p.x.toFixed(1)}, ${p.y.toFixed(1)})` };
   }
   const steps = Math.ceil(HORIZON / DT);
   const S = world.socks.length, FULL = (1 << S) - 1, M = FULL + 1;
@@ -35,7 +35,7 @@ export function solve(L, margin = MARGIN, scale = 1) {
       const cx = c % w, cy = Math.floor(c / w);
       for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = cx + dx, ny = cy + dy;
-        if (world.solid(nx, ny)) continue;
+        if (world.blocked(nx, ny)) continue;
         if (seen(cx + 0.5 + dx * 0.5, cy + 0.5 + dy * 0.5, t - DT / 2)) continue;
         if (seen(nx + 0.5, ny + 0.5, t)) continue;
         const nc = ny * w + nx;

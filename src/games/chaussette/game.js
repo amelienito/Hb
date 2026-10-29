@@ -6,6 +6,15 @@ import { sfx } from '../../core/sound.js';
 import { moveCircle, createStick, fitCanvas, drawTalyaTop, lerpAngle } from '../../core/topdown.js';
 import { parseLevel, guardPose, sees, visionPolygon, TALYA_SPEED, TALYA_R } from './world.js';
 import { LEVELS } from './levels.js';
+import { getMode, setMode, modeSwitch } from '../../core/modes.js';
+import { nextMissionButton } from '../../core/nav.js';
+
+// Réglages des modes : portée et angle de vision, vitesse de repérage
+const MODE = {
+  facile: { range: 0.75, fov: 0.85, sus: 0.6 },
+  normal: { range: 1, fov: 1, sus: 1 },
+  difficile: { range: 1.15, fov: 1.08, sus: 1.35 },
+};
 
 export const SAVE_KEY = 'chaussette';
 export const COUNT = LEVELS.length;
@@ -38,18 +47,27 @@ export function mount(root) {
   const canvas = h('canvas', { 'aria-label': 'Appartement vu de dessus. Déplace Talya avec le doigt ou les flèches.' });
   const stage = h('div', { class: 'td-stage' }, canvas);
   const levelsBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Choisir un niveau', html: ICONS.grid, onclick: openLevels });
+  const modeEl = modeSwitch('chaussette', () => applyMode());
 
   root.append(
     h('header', { class: 'g-bar' }, backButton(), h('div', { class: 'g-title' }, 'Opération chaussette'), levelsBtn),
     h('div', { class: 'cs-hud' }, levelEl, h('div', { class: 'cs-right' }, socksEl, eyeEl, timeEl)),
     stage,
     h('div', { class: 'cs-tools' }, hintEl, soundButton()),
+    h('div', { class: 'cs-mode' }, modeEl),
   );
 
   const ctx = canvas.getContext('2d');
   const stick = createStick(stage);
   let li = isOpen(save.last || 0) ? save.last || 0 : 0;
   let world, L, talya, guards, socks, time, state, spotted, maxSus, ts, ox, oy, W, H, bg;
+  let checkpoint = null, grace = 0;
+  const deaths = {};
+  // les gardes « vus par le jeu » : portée et angle ajustés selon le mode choisi
+  function applyMode() {
+    const m = MODE[getMode('chaussette')];
+    if (guards) for (const gd of guards) gd.v = { ...gd.g, range: gd.g.range * m.range, fov: gd.g.fov * m.fov };
+  }
   let particles = [];
 
   function load(n) {
@@ -59,6 +77,8 @@ export function mount(root) {
     const [sx, sy] = world.start;
     talya = { x: sx + 0.5, y: sy + 0.5, a: -Math.PI / 2, moving: false, speed: 0, ears: 1 };
     guards = world.guards.map(g => ({ g, tau: 0, sus: 0, look: null, pose: guardPose(g, 0) }));
+    applyMode();
+    checkpoint = null; grace = 0;
     socks = world.socks.map(([x, y]) => ({ x: x + 0.5, y: y + 0.5, taken: false, ph: Math.random() * 6 }));
     time = 0; state = 'ready'; spotted = 0; maxSus = 0; particles = [];
     levelEl.innerHTML = '';
@@ -255,11 +275,11 @@ export function mount(root) {
   }
 
   function drawCone(gd) {
-    const poly = visionPolygon(world, gd.g, { ...gd.pose, a: gd.look != null ? gd.look : gd.pose.a });
+    const poly = visionPolygon(world, gd.v, { ...gd.pose, a: gd.look != null ? gd.look : gd.pose.a });
     const x0 = ox + gd.pose.x * ts, y0 = oy + gd.pose.y * ts;
     const k = Math.min(1, gd.sus);
     const col = k > 0.05 ? mix(PAL.cone, PAL.alert, k) : PAL.cone;
-    const grd = ctx.createRadialGradient(x0, y0, ts * 0.3, x0, y0, gd.g.range * ts);
+    const grd = ctx.createRadialGradient(x0, y0, ts * 0.3, x0, y0, gd.v.range * ts);
     grd.addColorStop(0, `rgba(${col},${0.3 + k * 0.2})`);
     grd.addColorStop(1, `rgba(${col},0.03)`);
     ctx.fillStyle = grd;
@@ -292,6 +312,8 @@ export function mount(root) {
     socks.forEach(s => {
       if (s.taken || Math.hypot(s.x - talya.x, s.y - talya.y) > 0.55) return;
       s.taken = true;
+      // point de reprise : on repartira d'ici avec les chaussettes déjà volées
+      checkpoint = { x: s.x, y: s.y, a: talya.a, taken: socks.map(q => q.taken), taus: guards.map(g => g.tau), time, spotted };
       sfx.place(); sfx.lit(socks.filter(q => q.taken).length);
       buzz(15);
       for (let k = 0; k < 14; k++) particles.push({ x: s.x, y: s.y, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, life: 0.7 });
@@ -302,19 +324,21 @@ export function mount(root) {
     if (allTaken && Math.hypot(bx + 0.5 - talya.x, by + 0.5 - talya.y) < 0.45) return win();
 
     // gardes
-    const hidden = world.hide(Math.floor(talya.x), Math.floor(talya.y));
+    grace = Math.max(0, grace - dt);
+    const hidden = grace > 0 || world.hide(Math.floor(talya.x), Math.floor(talya.y));
+    const susRate = MODE[getMode('chaussette')].sus;
     for (const gd of guards) {
       const attentive = gd.sus > 0.25;
       if (!attentive) gd.tau += dt;
       gd.pose = guardPose(gd.g, gd.tau);
       const look = { ...gd.pose, a: gd.look != null ? gd.look : gd.pose.a };
-      const visible = !hidden && sees(world, gd.g, look, talya.x, talya.y);
+      const visible = !hidden && sees(world, gd.v, look, talya.x, talya.y);
       if (visible) {
         const d = Math.hypot(talya.x - gd.pose.x, talya.y - gd.pose.y);
-        const near = 1 - d / gd.g.range;
+        const near = Math.max(0, 1 - d / gd.v.range);
         const stealth = 0.55 + 0.45 * Math.min(1, talya.speed);
         const before = gd.sus;
-        gd.sus += dt * (0.8 + 2.2 * near) * stealth;
+        gd.sus += dt * (0.8 + 2.2 * near) * stealth * susRate;
         if (before <= 0.2 && gd.sus > 0.2) { spotted++; sfx.tick(); }
         const want = Math.atan2(talya.y - gd.pose.y, talya.x - gd.pose.x);
         gd.look = lerpAngle(gd.look != null ? gd.look : gd.pose.a, want, Math.min(1, dt * (gd.sus > 0.25 ? 6 : 0)));
@@ -338,17 +362,37 @@ export function mount(root) {
 
   function caught(gd) {
     state = 'caught';
+    deaths[li] = (deaths[li] || 0) + 1;
     sfx.alarm(); buzz(80);
     setTimeout(() => {
       let close;
+      const offerEasy = deaths[li] >= 6 && getMode('chaussette') !== 'facile';
+      const got = checkpoint ? checkpoint.taken.filter(Boolean).length : 0;
       close = sheet([
         h('h2', {}, 'Repérée.'),
         h('p', {}, gd.g.kind === 'dog' ? 'Kahina a tout vu. Elle a aboyé une fois, puis elle a remué la queue. Trop tard, la maison est réveillée.' : `${gd.g.name} a vu une queue blanche dépasser. Talya fait semblant de dormir.`),
+        offerEasy ? h('div', { class: 'easy-offer' },
+          h('b', {}, 'Passer en mode facile ?'),
+          h('span', {}, 'Pas de jugement. Les cônes sont plus courts et on te repère moins vite. Tu peux revenir au mode normal à tout moment.'),
+          h('button', { class: 'btn', type: 'button', onclick: () => { setMode('chaussette', 'facile'); modeEl.refresh(); close(); checkpoint ? resume() : load(li); } }, 'Oui, mode facile')) : null,
         h('div', { class: 'actions' },
-          h('button', { class: 'btn', type: 'button', onclick: () => { close(); load(li); } }, 'Recommencer'),
-          h('a', { class: 'btn ghost', href: '#/' }, 'Retour aux missions')),
+          checkpoint ? h('button', { class: 'btn', type: 'button', onclick: () => { close(); resume(); } }, `Reprendre à la dernière chaussette (${got} sur ${socks.length})`) : null,
+          h('button', { class: 'btn' + (checkpoint ? ' ghost' : ''), type: 'button', onclick: () => { close(); load(li); } }, 'Recommencer le niveau'),
+          h('a', { class: 'btn ghost', href: '#/missions' }, 'Retour aux missions')),
       ], 'cs-sheet');
     }, reducedMotion() ? 100 : 700);
+  }
+
+  // Reprend au dernier point de sauvegarde : mêmes chaussettes volées, gardes au même moment de leur ronde.
+  function resume() {
+    const cp = checkpoint;
+    talya.x = cp.x; talya.y = cp.y; talya.a = cp.a; talya.moving = false; talya.ears = 1;
+    socks.forEach((q, k) => { q.taken = cp.taken[k]; });
+    guards.forEach((gd, k) => { gd.tau = cp.taus[k]; gd.sus = 0; gd.look = null; gd.pose = guardPose(gd.g, gd.tau); });
+    time = cp.time; spotted = cp.spotted;
+    state = 'ready'; grace = 1.5;
+    stick.reset();
+    paintHud();
   }
 
   function win() {
@@ -376,8 +420,9 @@ export function mount(root) {
           h('div', { class: 'stat' }, h('b', {}, spotted), h('span', {}, spotted === 1 ? 'alerte' : 'alertes')),
           prev ? h('div', { class: 'stat' }, h('b', {}, Math.min(prev.time, time).toFixed(1).replace('.', ',') + ' s'), h('span', {}, 'record')) : null),
         h('div', { class: 'actions' },
-          last ? h('a', { class: 'btn', href: '#/' }, 'Retour aux missions') : h('button', { class: 'btn', type: 'button', onclick: () => go(li + 1) }, 'Niveau suivant'),
-          h('button', { class: 'btn ghost', type: 'button', onclick: () => go(li) }, 'Rejouer')),
+          last ? nextMissionButton('chaussette', true) : h('button', { class: 'btn', type: 'button', onclick: () => go(li + 1) }, 'Niveau suivant'),
+          h('button', { class: 'btn ghost', type: 'button', onclick: () => go(li) }, 'Rejouer'),
+          last ? h('a', { class: 'btn ghost', href: '#/missions' }, 'Retour aux missions') : null),
       ], 'cs-sheet');
     }, reducedMotion() ? 100 : 600);
   }
@@ -422,7 +467,7 @@ export function mount(root) {
       ctx.strokeStyle = `rgba(255,214,150,${0.35 + pulse * 0.45})`; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(ox + (bx + 0.5) * ts, oy + (by + 0.5) * ts, ts * (0.55 + pulse * 0.12), 0, Math.PI * 2); ctx.stroke();
     }
-    drawTalyaTop(ctx, ox + talya.x * ts, oy + talya.y * ts, talya.a, ts, now, talya.moving, { ears: talya.ears });
+    if (!(grace > 0 && Math.floor(now / 110) % 2)) drawTalyaTop(ctx, ox + talya.x * ts, oy + talya.y * ts, talya.a, ts, now, talya.moving, { ears: talya.ears });
     drawCovers(ctx, true);
     for (const gd of guards) drawGuard(gd);
     // particules
@@ -450,7 +495,7 @@ export function mount(root) {
     const m = Math.min(1, d * 5);
     return { x: (dx / d) * m, y: (dy / d) * m };
   }
-  window.__cs = { get state() { return state; }, get time() { return time; }, get spotted() { return spotted; }, load: n => { load(n); if (bot && bot.solve) bot.path = bot.solve(L).path; } };
+  window.__cs = { get state() { return state; }, get time() { return time; }, get spotted() { return spotted; }, get taken() { return socks.filter(q => q.taken).length; }, catchNow: () => caught(guards[0]), stopBot: () => { if (bot) bot.path = null; }, load: n => { load(n); if (bot && bot.solve) bot.path = bot.solve(L).path; } };
 
   load(li);
   raf = requestAnimationFrame(frame);
@@ -486,7 +531,7 @@ function drawLab(ctx, a, ts, moving) {
   ctx.rotate(a);
   ctx.scale(s, s);
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(1, 2, 16, 9, 0, 0, Math.PI * 2); ctx.fill();
-  const C = '#6b4128', D = '#4e2e1b';
+  const C = '#94603b', D = '#74492b';
   ctx.fillStyle = D;
   for (const [lx, ly] of [[8, -7], [8, 7], [-9, -7], [-9, 7]]) { ctx.beginPath(); ctx.ellipse(lx + (moving ? Math.sin(t / 80 + lx) * 2 : 0), ly, 3.6, 2.4, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.strokeStyle = C; ctx.lineWidth = 4; ctx.lineCap = 'round';

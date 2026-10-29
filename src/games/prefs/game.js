@@ -1,5 +1,6 @@
 // « Tu préfères ? » : 12 dilemmes Marvel puis 8 hot takes, et un profil de fan à la fin.
 import { h, backButton, soundButton, buzz, reducedMotion } from '../../core/ui.js';
+import { nextMissionButton } from '../../core/nav.js';
 import { get, set } from '../../core/store.js';
 import { sfx } from '../../core/sound.js';
 import { DILEMMAS, TAKES, AXES, TRAITS, MATCHES, AMELIEN } from './data.js';
@@ -117,8 +118,9 @@ export function mount(root) {
       })),
       agree != null ? h('p', { class: 'pf-agree' }, `D’accord avec Amélien sur ${agree} sur ${TOTAL}.`) : h('p', { class: 'pf-agree' }, 'Fais une capture d’écran et envoie-la à Amélien. Il a sûrement des objections.'),
       h('div', { class: 'actions' },
-        h('button', { class: 'btn', type: 'button', onclick: () => { answers = []; i = 0; ask(); } }, 'Rejouer'),
-        h('a', { class: 'btn ghost', href: '#/' }, 'Retour aux missions'))));
+        nextMissionButton('prefs', true),
+        h('button', { class: 'btn ghost', type: 'button', onclick: () => { answers = []; i = 0; ask(); } }, 'Rejouer'),
+        h('a', { class: 'btn ghost', href: '#/missions' }, 'Retour aux missions'))));
   }
 
   intro();

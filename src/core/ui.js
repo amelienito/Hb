@@ -42,7 +42,7 @@ export function soundButton() {
   return b;
 }
 
-export function backButton(href = '#/') {
+export function backButton(href = '#/missions') {
   return h('a', { class: 'icon-btn', href, 'aria-label': 'Retour aux missions', html: ICONS.back });
 }
 

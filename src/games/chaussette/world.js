@@ -9,12 +9,16 @@
 //   k  plan de travail, w  armoire : bloquent le passage et la vue
 //   c  chaussette à voler          D  panier de Talya (départ et arrivée)
 
-export const SOLID = new Set(['#', 's', 'p', 'k', 'w']);
+import { castRay, lineOfSight } from '../../core/topdown.js';
+
+export const SOLID = new Set(['#', 's', 'k', 'w']);
+// obstacles ronds (rayon en cases) : la collision suit le dessin
+export const ROUND = { p: 0.3 };
 export const OPAQUE = new Set(['#', 'k', 'w']);
 export const HIDE = new Set(['t', 'b']);
 
 export const TALYA_SPEED = 2.9;   // cases par seconde
-export const TALYA_R = 0.3;
+export const TALYA_R = 0.27;
 
 export function parseLevel(L) {
   const h = L.map.length, w = L.map[0].length;
@@ -32,7 +36,8 @@ export function parseLevel(L) {
   }
   const world = { w, h, tiles, socks, start, name: L.name };
   world.at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? '#' : tiles[y * w + x]);
-  world.solid = (x, y) => SOLID.has(world.at(x, y));
+  world.solid = (x, y) => { const c = world.at(x, y); return SOLID.has(c) ? true : ROUND[c] || false; };
+  world.blocked = (x, y) => !!world.solid(x, y);
   world.opaque = (x, y) => OPAQUE.has(world.at(x, y));
   world.hide = (x, y) => HIDE.has(world.at(x, y));
   world.guards = (L.guards || []).map(g => buildGuard(g));
@@ -42,7 +47,7 @@ export function parseLevel(L) {
 // Une patrouille : des points de passage, une vitesse, une pause à chaque point
 // pendant laquelle le regard pivote vers la direction suivante.
 function buildGuard(def) {
-  const look = { kind: def.kind || 'human', skin: def.skin || '#e2b998', range: def.range || 4.5, fov: ((def.fov || 70) * Math.PI) / 180, phase: def.phase || 0, name: def.name || 'Florian', hair: def.hair || '#3a2a20', shirt: def.shirt || '#c0533b' };
+  const look = { kind: def.kind || 'human', skin: def.skin || '#e2b998', range: def.range || 4.5, fov: ((def.fov || 70) * Math.PI) / 180, phase: def.phase || 0, name: def.name || 'Florian', hair: def.hair || '#3a2a20', shirt: def.shirt || '#3f8a52' };
   if (def.scan) {
     // garde immobile qui tourne la tête d'un angle à l'autre
     const at = [def.at[0] + 0.5, def.at[1] + 0.5];
@@ -125,13 +130,7 @@ export function sees(world, g, pose, px, py, margin = 0) {
 }
 
 export function lineOfSightClear(world, x0, y0, x1, y1) {
-  const dx = x1 - x0, dy = y1 - y0;
-  const n = Math.ceil(Math.hypot(dx, dy) * 5);
-  for (let k = 1; k < n; k++) {
-    const px = x0 + (dx * k) / n, py = y0 + (dy * k) / n;
-    if (world.opaque(Math.floor(px), Math.floor(py))) return false;
-  }
-  return true;
+  return lineOfSight(world.opaque, x0, y0, x1, y1);
 }
 
 // Polygone du cône de vision, coupé par les murs (pour l'affichage).
@@ -140,13 +139,8 @@ export function visionPolygon(world, g, pose, rays = 36) {
   for (let k = 0; k <= rays; k++) {
     const a = pose.a - g.fov / 2 + (g.fov * k) / rays;
     const cx = Math.cos(a), cy = Math.sin(a);
-    let d = 0;
-    const step = 0.05;
-    while (d < g.range) {
-      const nx = pose.x + cx * (d + step), ny = pose.y + cy * (d + step);
-      if (world.opaque(Math.floor(nx), Math.floor(ny))) break;
-      d += step;
-    }
+    // même lancer de rayon que la détection : ce qu'on voit à l'écran est exactement ce qui détecte
+    const d = castRay(world.opaque, pose.x, pose.y, cx, cy, g.range);
     pts.push([pose.x + cx * d, pose.y + cy * d]);
   }
   return pts;

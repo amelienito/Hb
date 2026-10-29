@@ -51,7 +51,8 @@ export function spawn(world, caseIndex, seed) {
 }
 
 // Fait vivre les bêtes. Renvoie la bête qui touche Talya ce tour-ci (ou null).
-export function updateBeasts(world, beasts, talya, dt, events) {
+export function updateBeasts(world, beasts, talya, dt, events, mod = { beast: 1, sight: 1 }) {
+  const sp = mod.beast, sr = mod.sight;
   let hit = null;
   const solid = world.solid;
   const seeT = (b, range) => {
@@ -64,28 +65,28 @@ export function updateBeasts(world, beasts, talya, dt, events) {
     if (b.kind === 'hedgehog') {
       // promenade lente autour de son coin de forêt
       if (b.t > 2.4) { b.t = 0; const back = Math.hypot(b.hx - b.x, b.hy - b.y) > 2.5; b.a = back ? Math.atan2(b.hy - b.y, b.hx - b.x) : b.a + (Math.random() - 0.5) * 2.4; }
-      [b.x, b.y] = moveCircle(solid, b.x, b.y, b.r, Math.cos(b.a) * 0.6 * dt, Math.sin(b.a) * 0.6 * dt);
+      [b.x, b.y] = moveCircle(solid, b.x, b.y, b.r, Math.cos(b.a) * 0.6 * sp * dt, Math.sin(b.a) * 0.6 * sp * dt);
     } else if (b.kind === 'fox') {
       b.cool = Math.max(0, b.cool - dt);
       if (b.state === 'idle') {
         if (b.t > 2) { b.t = 0; b.a = Math.atan2(b.hy - b.y, b.hx - b.x) + (Math.random() - 0.5) * 2.5; }
-        [b.x, b.y] = moveCircle(solid, b.x, b.y, b.r, Math.cos(b.a) * 0.9 * dt, Math.sin(b.a) * 0.9 * dt);
-        if (!b.cool && seeT(b, 4.2)) { b.state = 'chase'; b.t = 0; events.push(['fox', b]); }
+        [b.x, b.y] = moveCircle(solid, b.x, b.y, b.r, Math.cos(b.a) * 0.9 * sp * dt, Math.sin(b.a) * 0.9 * sp * dt);
+        if (!b.cool && seeT(b, 4.2 * sr)) { b.state = 'chase'; b.t = 0; events.push(['fox', b]); }
       } else if (b.state === 'chase') {
         b.a = Math.atan2(talya.y - b.y, talya.x - b.x);
-        [b.x, b.y] = moveCircle(solid, b.x, b.y, b.r, Math.cos(b.a) * 2.15 * dt, Math.sin(b.a) * 2.15 * dt);
+        [b.x, b.y] = moveCircle(solid, b.x, b.y, b.r, Math.cos(b.a) * 2.15 * sp * dt, Math.sin(b.a) * 2.15 * sp * dt);
         if (b.t > 3.6 || dT > 7) { b.state = 'idle'; b.t = 0; b.cool = 3; }
       }
     } else if (b.kind === 'boar') {
       if (b.state === 'idle') {
         if (b.t > 3) { b.t = 0; b.a = Math.atan2(b.hy - b.y, b.hx - b.x) + (Math.random() - 0.5) * 2; }
         [b.x, b.y] = moveCircle(solid, b.x, b.y, b.r, Math.cos(b.a) * 0.4 * dt, Math.sin(b.a) * 0.4 * dt);
-        if (b.t > 0.5 && seeT(b, 5.5)) { b.state = 'paw'; b.t = 0; b.a = Math.atan2(talya.y - b.y, talya.x - b.x); events.push(['boar', b]); }
+        if (b.t > 0.5 && seeT(b, 5.5 * sr)) { b.state = 'paw'; b.t = 0; b.a = Math.atan2(talya.y - b.y, talya.x - b.x); events.push(['boar', b]); }
       } else if (b.state === 'paw') {
         // il gratte le sol avant de charger : c'est le moment d'esquiver
         if (b.t > 0.9) { b.state = 'charge'; b.t = 0; }
       } else if (b.state === 'charge') {
-        const vx = Math.cos(b.a) * 6.5 * dt, vy = Math.sin(b.a) * 6.5 * dt;
+        const vx = Math.cos(b.a) * 6.5 * sp * dt, vy = Math.sin(b.a) * 6.5 * sp * dt;
         const [nx, ny] = moveCircle(solid, b.x, b.y, b.r, vx, vy);
         const blocked = Math.hypot(nx - b.x, ny - b.y) < Math.hypot(vx, vy) * 0.5;
         b.x = nx; b.y = ny;

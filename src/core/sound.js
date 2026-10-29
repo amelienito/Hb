@@ -63,6 +63,13 @@ export const sfx = {
   wrong() { tone({ f: 196, to: 110, d: 0.25, v: 0.06, type: 'sawtooth' }); },
   tick() { tone({ f: 1200, d: 0.03, v: 0.02, type: 'square' }); },
   go() { tone({ f: 392, d: 0.12, v: 0.05, type: 'triangle' }); tone({ f: 784, d: 0.3, v: 0.04, type: 'triangle', delay: 0.1 }); },
+  // petit aboiement : p fait varier la hauteur, loud pour les WOOF en capitales
+  woof(p = 1, loud = false) {
+    const v = loud ? 1.8 : 1;
+    tone({ f: 340 * p, to: 185 * p, d: 0.11, v: 0.04 * v, type: 'triangle', attack: 0.008 });
+    tone({ f: 680 * p, to: 320 * p, d: 0.06, v: 0.01 * v, type: 'sawtooth' });
+    noise({ d: 0.05, v: 0.022 * v, f: 750 * p });
+  },
   ears() { tone({ f: 880, to: 1320, d: 0.08, v: 0.03, type: 'sine' }); tone({ f: 990, to: 1480, d: 0.08, v: 0.025, type: 'sine', delay: 0.09 }); },
 };
 
