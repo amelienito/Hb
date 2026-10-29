@@ -713,12 +713,12 @@ button { font: inherit; color: inherit; }
 .iv-standfirst::first-letter {
   float: left; font-family: var(--serif); font-size: 68px; line-height: .78; padding: 6px 8px 0 0; color: var(--rouge);
 }
-.iv-photo { margin: 24px calc(var(--gutter) * -1) 0; }
+.iv-photo { margin: 32px calc(var(--gutter) * -1) 0; }
 .iv-photo-img {
   position: relative; height: 270px; overflow: hidden;
   background: radial-gradient(90% 80% at 62% 30%, #1c2f29 0%, var(--nuit) 70%);
 }
-.iv-photo-img svg { position: absolute; left: 50%; bottom: -8px; width: 250px; height: auto; transform: translateX(-46%); }
+.iv-photo-img svg { position: absolute; left: 50%; bottom: -8px; width: 212px; height: auto; transform: translateX(-46%); }
 .iv-photo figcaption { padding: 8px var(--gutter) 0; font-size: 13px; font-style: italic; color: var(--encre-2); }
 .iv-byline {
   margin: 22px 0 6px; padding-top: 12px; border-top: 2px solid var(--encre);

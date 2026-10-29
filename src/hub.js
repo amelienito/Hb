@@ -53,8 +53,21 @@ export function mount(root) {
   root.append(hero, missions, musicSection(), foot);
   if (location.hash === '#/missions') missions.scrollIntoView();
 
+  // Talya ne doit jamais toucher le texte : si ses oreilles montent trop haut, on réduit le buste.
+  const bustEl = root.querySelector('.bust'), tagEl = root.querySelector('.tagline');
+  function fitBust() {
+    bustEl.style.width = '';
+    const tag = tagEl.getBoundingClientRect(), b = bustEl.getBoundingClientRect();
+    if (b.left >= tag.right + 6) return; // à droite du texte : rien à craindre
+    const room = b.bottom - (tag.bottom + 22);
+    if (b.height > room) bustEl.style.width = Math.max(130, room * (320 / 380)) + 'px';
+  }
+  requestAnimationFrame(fitBust);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitBust);
+  window.addEventListener('resize', fitBust);
+
   const stop = startPreview(root.querySelector('.m-reacteur canvas'));
-  return { unmount() { stop(); } };
+  return { unmount() { stop(); window.removeEventListener('resize', fitBust); } };
 }
 
 function reacteurCard() {
