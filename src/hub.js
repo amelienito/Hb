@@ -105,7 +105,7 @@ function rivauxCard() {
 // Spotify en option. Rien ne se charge avant le clic.
 const ALBUM = {
   link: 'https://distrokid.com/hyperfollow/amlien/mode-cratif',
-  youtube: 'https://www.youtube-nocookie.com/embed/videoseries?list=PL42zoNp9dj5BCSalsdGRNH0rQ8HqKd7cY',
+  youtube: 'https://www.youtube.com/embed/Zic8Yv53RmU?rel=0',
   spotify: 'https://open.spotify.com/embed/album/2XBxyaoRctkr9uteKifL4Z?utm_source=generator&theme=0',
   cover: 'https://distrokid.imgix.net/http%3A%2F%2Fgather.fandalism.com%2F10598506--9A21CD12-16C9-422F-87F4B22D118FB30B--0--4928066--MODECREATIF.jpg?fm=jpg&q=75&w=800&s=60972a3227b566cdb9fd6fe272b8da98',
 };
