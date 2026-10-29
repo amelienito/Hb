@@ -6,6 +6,7 @@ import { sfx } from '../../core/sound.js';
 import { moveCircle, createStick, fitCanvas, drawTalyaTop, lerpAngle } from '../../core/topdown.js';
 import { parseLevel, guardPose, sees, visionPolygon, TALYA_SPEED, TALYA_R } from './world.js';
 import { LEVELS, LOOT, lootKind, levelFor } from './levels.js';
+import { LOOT_SVG, LOOT_TEXT, lootImage } from './loot.js';
 import { getMode, setMode, modeSwitch } from '../../core/modes.js';
 import { gameBar, nextMissionButton } from '../../core/nav.js';
 
@@ -45,6 +46,7 @@ export function mount(root) {
   const eyeEl = h('div', { class: 'cs-eye', title: 'Repérage' }, h('span', { class: 'cs-eye-ico', html: EYE_SVG }), h('div', { class: 'cs-eye-bar' }, h('i')));
   const hintEl = h('p', { class: 'cs-tip', 'aria-live': 'polite' });
   const canvas = h('canvas', { 'aria-label': 'Appartement vu de dessus. Déplace Talya avec le doigt ou les flèches.' });
+  const lootEl = h('div', { class: 'cs-loot', 'aria-live': 'polite' });
   const stage = h('div', { class: 'td-stage' }, canvas);
   const levelsBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Choisir un niveau', html: ICONS.grid, onclick: openLevels });
   const modeEl = modeSwitch('chaussette', () => onModeChange());
@@ -53,8 +55,11 @@ export function mount(root) {
     gameBar('chaussette', 'Opération Osmose', levelsBtn),
     h('div', { class: 'cs-hud' }, levelEl, h('div', { class: 'cs-right' }, socksEl, eyeEl, timeEl)),
     stage,
-    h('div', { class: 'cs-tools' }, hintEl, soundButton()),
-    h('div', { class: 'cs-mode' }, modeEl),
+    // le pop-up de butin recouvre le bas de l'écran (conseil + réglages), jamais le plan de jeu
+    h('div', { class: 'cs-foot' },
+      h('div', { class: 'cs-tools' }, hintEl, soundButton()),
+      h('div', { class: 'cs-mode' }, modeEl),
+      lootEl),
   );
 
   const ctx = canvas.getContext('2d');
@@ -92,8 +97,23 @@ export function mount(root) {
     levelEl.append(h('small', {}, `Niveau ${n + 1} sur ${COUNT}`), L.name);
     hintEl.textContent = L.hint;
     stick.reset();
+    lootEl.classList.remove('on');
     bg = null;
     paintHud();
+  }
+
+  // pop-up de ramassage : n'interrompt pas la partie, disparaît seul
+  let lootTimer = 0;
+  function showLoot(kind, n) {
+    const t = LOOT_TEXT[kind];
+    lootEl.innerHTML = '';
+    lootEl.append(
+      h('span', { class: 'cs-loot-ico', html: LOOT_SVG[kind] }),
+      h('div', { class: 'cs-loot-txt' }, h('b', {}, t.title), h('span', {}, t.lines[(li + n) % t.lines.length])),
+      h('span', { class: 'cs-loot-n' }, `${n}\u202F/\u202F${socks.length}`));
+    lootEl.classList.remove('on'); void lootEl.offsetWidth; lootEl.classList.add('on');
+    clearTimeout(lootTimer);
+    lootTimer = setTimeout(() => lootEl.classList.remove('on'), 2600);
   }
 
   function paintHud() {
@@ -325,6 +345,7 @@ export function mount(root) {
       buzz(15);
       for (let k = 0; k < 14; k++) particles.push({ x: s.x, y: s.y, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, life: 0.7 });
       paintHud();
+      showLoot(s.kind, socks.filter(q => q.taken).length);
     });
     const allTaken = socks.every(s => s.taken);
     const [bx, by] = world.start;
@@ -530,59 +551,28 @@ export function mount(root) {
   load(li);
   raf = requestAnimationFrame(frame);
   return {
-    unmount() { alive = false; cancelAnimationFrame(raf); stick.destroy(); },
+    unmount() { alive = false; cancelAnimationFrame(raf); clearTimeout(lootTimer); stick.destroy(); },
   };
 }
 
 const EYE_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>';
-const LOOT_SVG = {
-  cd: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="currentColor"/><circle cx="12" cy="12" r="3.6" fill="rgba(0,0,0,.45)"/><circle cx="12" cy="12" r="1.4" fill="#1b1816"/></svg>',
-  mag: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="1.5" fill="currentColor"/><rect x="5" y="2.5" width="14" height="5" rx="1.5" fill="rgba(0,0,0,.4)"/><rect x="8" y="10" width="8" height="8" rx="1" fill="rgba(0,0,0,.25)"/></svg>',
-  sticker: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7l-6 6H7a3 3 0 0 1-3-3z" fill="currentColor"/><path d="M14 20v-4a2 2 0 0 1 2-2h4z" fill="rgba(0,0,0,.35)"/><circle cx="11" cy="11" r="3.4" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="2"/></svg>',
-};
-
-// Le butin vu de dessus : CD de la mixtape Seta, magazine Osmose, sticker Osmose.
+// Le butin vu de dessus : le même dessin que dans le compteur, en grand, avec un halo pour qu'on le repère
 function drawLoot(ctx, kind, x, y, ts, ph, now) {
-  const s = ts / 30;
+  const img = lootImage(kind);
+  const pulse = 1 + Math.sin(now / 380 + ph) * 0.06;
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(s, s);
-  ctx.fillStyle = 'rgba(255,214,150,.18)';
-  ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
-  if (kind === 'cd') {
-    // disque argenté avec un reflet qui tourne, étiquette rouge Seta au centre
-    ctx.rotate(now / 1400 + ph);
-    ctx.fillStyle = '#c9ced3';
-    ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(160,220,255,.55)';
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 10, -0.5, 0.25); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,170,220,.45)';
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 10, 2.6, 3.3); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#d23c2c';
-    ctx.beginPath(); ctx.arc(0, 0, 4.6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#1b1816';
-    ctx.beginPath(); ctx.arc(0, 0, 1.5, 0, Math.PI * 2); ctx.fill();
-  } else if (kind === 'mag') {
-    // couverture d'Osmose : papier crème, bandeau du titre, photo au centre
-    ctx.rotate(-0.25 + Math.sin(ph) * 0.2);
-    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(-6.5, -8, 14, 18);
-    ctx.fillStyle = '#f1ebdf'; ctx.fillRect(-7.5, -9.5, 14, 18);
-    ctx.fillStyle = '#1d1a16'; ctx.fillRect(-7.5, -9.5, 14, 4.2);
-    ctx.fillStyle = '#f1ebdf'; for (let k = 0; k < 5; k++) ctx.fillRect(-6 + k * 2.4, -8.3, 1.4, 1.8);
-    ctx.fillStyle = '#c8362b'; ctx.fillRect(-5.5, -3.5, 10, 9);
-    ctx.fillStyle = '#f1ebdf'; ctx.beginPath(); ctx.arc(-0.5, 1, 2.6, 0, Math.PI * 2); ctx.fill();
-  } else {
-    // sticker jaune avec le « O » d'Osmose et un coin décollé
-    ctx.rotate(0.3 + Math.sin(ph) * 0.25);
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.roundRect(-9, -9, 18, 18, 4); ctx.fill();
-    ctx.fillStyle = '#ffd23f';
-    ctx.beginPath(); ctx.moveTo(-7, -7); ctx.lineTo(7, -7); ctx.lineTo(7, 2); ctx.lineTo(2, 7); ctx.lineTo(-7, 7); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#1d1a16'; ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.arc(-0.5, -0.5, 3.6, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#e3dccd';
-    ctx.beginPath(); ctx.moveTo(7, 2); ctx.lineTo(2, 2); ctx.lineTo(2, 7); ctx.closePath(); ctx.fill();
-  }
+  const r = ts * 0.78 * pulse;
+  const halo = ctx.createRadialGradient(0, 0, ts * 0.1, 0, 0, r);
+  halo.addColorStop(0, 'rgba(255,214,150,.42)');
+  halo.addColorStop(1, 'rgba(255,214,150,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.rotate(kind === 'cd' ? 0.15 + Math.sin(now / 900 + ph) * 0.12 : kind === 'mag' ? -0.22 + Math.sin(now / 700 + ph) * 0.08 : 0.2 + Math.sin(now / 800 + ph) * 0.1);
+  const size = ts * 1.02;
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(size * 0.06, size * 0.1, size * 0.4, size * 0.34, 0, 0, Math.PI * 2); ctx.fill();
+  if (img.complete && img.naturalWidth) ctx.drawImage(img, -size / 2, -size / 2, size, size);
   ctx.restore();
 }
 
