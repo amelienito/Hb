@@ -752,7 +752,7 @@ button { font: inherit; color: inherit; }
 .iv-end { padding-top: 22px; scroll-margin-top: 12px; }
 .iv-q a { color: inherit; text-decoration: underline; text-decoration-color: var(--rouge); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .iv-closing { border-bottom: 0; }
-.iv-epilogue { margin: 6px 0 0; font-family: var(--serif); font-style: italic; font-size: 22px; line-height: 1.35; }
+.iv-epilogue { margin: 6px 0 0; font-family: var(--serif); font-size: 22px; line-height: 1.35; }
 .iv-credits { margin-top: 26px; padding-top: 14px; border-top: 2px solid var(--encre); font-size: 14px; color: var(--encre-2); }
 .iv-credits p { margin: 0 0 4px; }
 .iv-credits a { color: var(--encre); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; border-bottom: 1.5px solid var(--rouge); }
