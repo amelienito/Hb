@@ -10,7 +10,7 @@ export const INTRO = 'Figure majeure de la pop lyrique franco-canine, Talya s’
 
 export const CAPTION = 'Talya, entre deux sessions studio.';
 
-const ALBUM = 'https://distrokid.com/hyperfollow/amlien/mode-cratif';
+const INTRO_TALYA = 'https://youtu.be/Zic8Yv53RmU';
 const CLIP = 'https://youtu.be/d_jnmi1lxj8';
 
 export const QA = [
@@ -23,7 +23,7 @@ export const QA = [
     a: 'Beaucoup. Avant, je voyais un écureuil, je courais. Aujourd’hui, je vois un écureuil, je pense à tout ce qu’il traverse, et ensuite je cours. L’animal que j’étais ? Je lui pardonne. Il ne savait pas.',
   },
   {
-    q: 'Histoire que nos lecteurs et lectrices comprennent bien la portée de vos mots, pouvez-vous nous raconter à quoi ressemble le quotidien de l’interprète du classique [_Introduction Talya_](' + ALBUM + ') ?',
+    q: 'Histoire que nos lecteurs et lectrices comprennent bien la portée de vos mots, pouvez-vous nous raconter à quoi ressemble le quotidien de l’interprète du classique [_Introduction Talya_](' + INTRO_TALYA + ') ?',
     a: 'Réveil à six heures, parce que Florian l’a décidé. Une balade, deux croissants que personne ne m’a donnés, une sieste. Ensuite, le studio : je vocalise, je mâchonne un câble, je vocalise encore. Le soir, je regarde un film Marvel avec Flo, et je fais semblant de tout comprendre. Ne le lui dites pas.',
   },
   {
