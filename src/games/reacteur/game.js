@@ -7,7 +7,7 @@ import { drawTalya } from '../../core/talya.js';
 import { parse, trace, solve } from './engine.js';
 import { drawBoard, targetAngle } from './render.js';
 import { LEVELS } from './levels.js';
-import { nextMissionButton } from '../../core/nav.js';
+import { gameBar, nextMissionButton } from '../../core/nav.js';
 
 // 7 niveaux principaux qui montent régulièrement (une mécanique nouvelle à la fois),
 // puis les 2 circuits les plus corsés en bonus.
@@ -36,8 +36,8 @@ export function loadSave() {
 }
 
 const SPEED = 22; // vitesse de propagation du faisceau, en cases par seconde
-const HINT_AFTER = 35;     // secondes avant de proposer un indice
-const ANSWER_AFTER = 90;   // secondes avant de proposer la réponse
+const HINT_AFTER = 7;      // secondes sans rien toucher avant de proposer un indice
+const ANSWER_AFTER = 60;   // secondes sur le niveau avant de proposer la réponse
 
 const HINTS = {
   0: 'Touche un miroir pour le faire pivoter. Allume chaque cœur avant que Flo rentre.',
@@ -50,7 +50,7 @@ const HINTS = {
 };
 
 const WIN_LINES = [
-  'Florian ne saura jamais.',
+  'Florian n’en saura jamais rien.',
   'Talya nie toute implication.',
   'Aucune preuve. Aucun témoin.',
   'Le courant revient, la chaussette reste introuvable.',
@@ -75,7 +75,7 @@ export function mount(root) {
   let reveal = { t0: 0, done: true }, ghost = null, pending = [];
   let alarmShown = false;
   // aide : chrono de blocage, indices utilisés, case à montrer, réponse affichée
-  let stuck = 0, hintsUsed = 0, hintCell = null, answered = false, solving = null;
+  let stuck = 0, idle = 0, hintOn = false, hintsUsed = 0, hintCell = null, answered = false, solving = null;
 
   const levelEl = h('div', { class: 'rx-level' });
   const movesEl = h('b', {}, '0');
@@ -90,7 +90,7 @@ export function mount(root) {
   const helpRow = h('div', { class: 'rx-helprow' }, hintBtn, answerBtn);
 
   root.append(
-    h('header', { class: 'g-bar' }, backButton(), h('div', { class: 'g-title' }, 'Réacteur'), levelsBtn),
+    gameBar('reacteur', 'Réacteur', levelsBtn),
     h('div', { class: 'rx-head' }, levelEl,
       h('div', { class: 'rx-counts' },
         h('div', {}, movesEl, h('span', {}, 'coups')),
@@ -125,7 +125,7 @@ export function mount(root) {
     const L = ALL[n];
     g = parse(L.rows);
     moves = 0; history = []; won = false; pressed = null; focus = null;
-    stuck = 0; hintsUsed = 0; hintCell = null; answered = false; clearInterval(solving); solving = null;
+    stuck = 0; idle = 0; hintOn = false; hintsUsed = 0; hintCell = null; answered = false; clearInterval(solving); solving = null;
     angles = new Map(); scales = new Map();
     for (const i of g.mut) angles.set(i, targetAngle(g.cells[i]));
     tr = trace(g);
@@ -147,7 +147,9 @@ export function mount(root) {
     undoBtn.disabled = history.length === 0 || won;
     const L = ALL[li];
     // l'aide apparaît quand on bloque : après un moment, ou après beaucoup de coups
-    const showHint = !won && !solving && (stuck > HINT_AFTER || moves > L.par + 8);
+    // une fois apparu, le bouton d'indice reste là jusqu'à la fin du niveau
+    if (idle > HINT_AFTER || moves > L.par + 8) hintOn = true;
+    const showHint = !won && !solving && hintOn;
     const showAnswer = !won && !solving && (stuck > ANSWER_AFTER || hintsUsed >= 3);
     hintBtn.hidden = !showHint;
     answerBtn.hidden = !showAnswer;
@@ -200,6 +202,7 @@ export function mount(root) {
 
   function act(i, auto = false) {
     if (won || (solving && !auto)) return;
+    if (!auto) idle = 0;
     const c = g.cells[i];
     if (c.t !== 'mirror' && c.t !== 'socket') { sfx.tap(); return; }
     history.push([i, c.s]);
@@ -227,6 +230,7 @@ export function mount(root) {
 
   function undo() {
     if (!history.length || won || solving) return;
+    idle = 0;
     const [i, s] = history.pop();
     const c = g.cells[i];
     if (c.t === 'mirror') angles.set(i, angles.get(i) - 90);
@@ -362,9 +366,9 @@ export function mount(root) {
     const dt = Math.min(0.05, (t - last) / 1000); last = t;
     // chrono de blocage : seulement quand on joue (pas de fenêtre ouverte, onglet visible)
     if (!won && !document.hidden && !document.querySelector('.overlay')) {
-      const before = stuck;
-      stuck += dt;
-      if ((before <= HINT_AFTER && stuck > HINT_AFTER) || (before <= ANSWER_AFTER && stuck > ANSWER_AFTER)) refresh();
+      const before = stuck, idleBefore = idle;
+      stuck += dt; idle += dt;
+      if ((idleBefore <= HINT_AFTER && idle > HINT_AFTER) || (before <= ANSWER_AFTER && stuck > ANSWER_AFTER)) refresh();
     }
     for (const [i, a] of angles) {
       const cur = displayAngles.has(i) ? displayAngles.get(i) : a;
@@ -409,13 +413,13 @@ export function mount(root) {
   load(li);
   raf = requestAnimationFrame(frame);
   // accès pour les tests automatiques
-  window.__rx = { setStuck(v) { stuck = v; refresh(); }, get hintCell() { return hintCell; }, get level() { return li; }, load };
+  window.__rx = { setStuck(v) { stuck = v; idle = v; refresh(); }, get hintCell() { return hintCell; }, get level() { return li; }, load };
   // petite mise en contexte, la première fois
   if (!save.intro) {
     let close;
     close = sheet([
       h('h2', {}, 'Le câble du Mac mini.'),
-      h('p', {}, 'Talya a mangé le câble du Mac mini de Florian. Heureusement, elle s’y connaît en informatique : si elle rétablit le courant avant que Flo rentre, il ne saura jamais rien.'),
+      h('p', {}, 'Talya a mangé le câble du Mac mini de Florian. Heureusement, elle s’y connaît en informatique : si elle rétablit le courant avant que Flo rentre, il n’en saura jamais rien.'),
       h('p', {}, 'Fais pivoter les miroirs pour guider le laser jusqu’à chaque cœur. Les capteurs rouges coupent tout.'),
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: () => { save.intro = true; set(SAVE_KEY, save); close(); } }, 'Au boulot')),
     ], 'rx-sheet');

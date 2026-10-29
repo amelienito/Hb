@@ -6,6 +6,7 @@ import { parseLevel, guardPose, sees, TALYA_SPEED } from './world.js';
 export const DT = (1 / TALYA_SPEED) * 1.08;
 const HORIZON = 150;
 export const MARGIN = 0.45;
+const SUB = [0.25, 0.5, 0.75, 1];
 
 // scale > 1 : on agrandit la portée et l'angle de vision pour mesurer la difficulté (outil uniquement).
 export function solve(L, margin = MARGIN, scale = 1) {
@@ -36,8 +37,11 @@ export function solve(L, margin = MARGIN, scale = 1) {
       for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = cx + dx, ny = cy + dy;
         if (world.blocked(nx, ny)) continue;
-        if (seen(cx + 0.5 + dx * 0.5, cy + 0.5 + dy * 0.5, t - DT / 2)) continue;
-        if (seen(nx + 0.5, ny + 0.5, t)) continue;
+        // on vérifie tout le trajet, pas seulement ses extrémités : un garde qui tourne vite la tête
+        // peut balayer une case entre deux instants trop espacés
+        let spotted = false;
+        for (const f of SUB) if (seen(cx + 0.5 + dx * f, cy + 0.5 + dy * f, t - DT + DT * f)) { spotted = true; break; }
+        if (spotted) continue;
         const nc = ny * w + nx;
         let nm = m;
         if (sockAt.has(nc)) nm |= 1 << sockAt.get(nc);

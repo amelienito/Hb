@@ -1,10 +1,11 @@
 // L'interview : un entretien façon magazine. Amélien pose les questions, Talya répond.
 // Une question à la fois ; la réponse s'écrit woof par woof, avec un petit aboiement.
 import { h, backButton, soundButton, buzz, reducedMotion } from '../../core/ui.js';
+import { gameBar } from '../../core/nav.js';
 import { get, set } from '../../core/store.js';
 import { sfx } from '../../core/sound.js';
 import { bustSVG } from '../../core/talya.js';
-import { KICKER, TITLE, INTRO, CAPTION, QA, OUTRO, SIGNATURE } from './data.js';
+import { KICKER, TITLE, INTRO, CAPTION, QA, CLOSING, EPILOGUE, SIGNATURE, CREDITS, OSB } from './data.js';
 
 export const SAVE_KEY = 'interview';
 export const COUNT = QA.length;
@@ -14,10 +15,22 @@ export function typo(s) {
   return s.replace(/ ([?!:;»])/g, ' $1').replace(/« /g, '« ');
 }
 
-// *texte* → italique
+// _texte_ → italique ; [texte](lien) → lien (ouvert dans un nouvel onglet)
+function italics(s) {
+  const out = [];
+  s.split(/_(.+?)_/).forEach((part, k) => { if (part) out.push(k % 2 ? h('em', {}, part) : part); });
+  return out;
+}
 function rich(s) {
   const out = [];
-  s.split(/\*(.+?)\*/).forEach((part, k) => { if (part) out.push(k % 2 ? h('em', {}, part) : part); });
+  const re = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+  let last = 0, m;
+  while ((m = re.exec(s))) {
+    out.push(...italics(s.slice(last, m.index)));
+    out.push(h('a', { href: m[2], target: '_blank', rel: 'noopener' }, ...italics(m[1])));
+    last = re.lastIndex;
+  }
+  out.push(...italics(s.slice(last)));
   return out;
 }
 
@@ -37,6 +50,7 @@ export function mount(root) {
   const save = get(SAVE_KEY, {});
   let shown = -1;        // dernière question affichée
   let typing = null;     // réponse en train de s'écrire
+  let closed = false;     // mot de la fin d'Amélien affiché
   let ended = false;
   const timers = new Set();
   const later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; };
@@ -49,7 +63,7 @@ export function mount(root) {
   const dock = h('div', { class: 'iv-dock' }, h('div', { class: 'iv-dock-in' }, countEl, nextBtn, allBtn));
 
   root.append(
-    h('header', { class: 'g-bar' }, backButton(), h('div', { class: 'g-title' }, 'L’interview'), soundButton()),
+    gameBar('interview', 'L’interview', soundButton()),
     h('article', { class: 'iv-paper' },
       h('p', { class: 'iv-kicker' }, KICKER),
       h('h1', { class: 'iv-title' }, typo(TITLE)),
@@ -75,8 +89,12 @@ export function mount(root) {
 
   function paintDock() {
     const last = shown >= QA.length - 1;
-    countEl.textContent = shown < 0 ? `${QA.length} questions` : `Question ${shown + 1} sur ${QA.length}`;
-    nextBtn.textContent = typing ? 'Passer' : shown < 0 ? (save.read ? 'Relire l’interview' : 'Commencer l’interview') : last ? 'Fin de l’entretien' : 'Question suivante';
+    countEl.textContent = shown < 0 ? `${QA.length} questions` : closed ? 'Fin de l’entretien' : `Question ${shown + 1} sur ${QA.length}`;
+    nextBtn.textContent = typing ? 'Passer'
+      : shown < 0 ? (save.read ? 'Relire l’interview' : 'Commencer l’interview')
+      : !last ? 'Question suivante'
+      : !closed ? 'Le mot de la fin'
+      : 'Fin de l’entretien';
     allBtn.hidden = ended;
     dock.hidden = ended;
   }
@@ -138,13 +156,27 @@ export function mount(root) {
     });
   }
 
+  // Le mot de la fin : Amélien a la dernière réplique.
+  function showClosing(live) {
+    closed = true;
+    const ex = h('section', { class: 'iv-ex iv-closing' + (live ? ' in' : '') },
+      h('div', { class: 'iv-q' }, h('span', { class: 'iv-who' }, 'Amélien'), h('p', {}, rich(typo(CLOSING)))));
+    qa.append(ex);
+    if (live) later(() => bringIntoView(ex), 30);
+    paintDock();
+  }
+
   function showEnd(live) {
     ended = true;
+    root.classList.add('iv-done');
     save.read = true; set(SAVE_KEY, save);
     endBox.hidden = false;
     endBox.replaceChildren(
-      h('div', { class: 'iv-q iv-outro' }, h('span', { class: 'iv-who' }, 'Amélien'), h('p', {}, typo(OUTRO))),
+      h('p', { class: 'iv-epilogue' }, typo(EPILOGUE)),
       h('p', { class: 'iv-sign' }, SIGNATURE, h('span', { class: 'iv-endmark', 'aria-hidden': 'true' })),
+      h('div', { class: 'iv-credits' },
+        CREDITS.map(c => h('p', {}, c)),
+        h('p', {}, h('a', { href: OSB.href, target: '_blank', rel: 'noopener' }, OSB.label))),
       h('div', { class: 'iv-actions' },
         h('a', { class: 'btn', href: '#/missions' }, 'Retour aux missions'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => { location.hash = '#/interview?' + Date.now(); } }, 'Relire depuis le début')),
@@ -158,6 +190,7 @@ export function mount(root) {
     if (ended) return;
     sfx.tap();
     if (shown < QA.length - 1) { shown++; addExchange(shown, true); }
+    else if (!closed) showClosing(true);
     else showEnd(true);
     paintDock();
   }
@@ -165,6 +198,7 @@ export function mount(root) {
   function showAll() {
     if (typing) typing.finish();
     while (shown < QA.length - 1) { shown++; addExchange(shown, false); }
+    if (!closed) showClosing(false);
     if (!ended) showEnd(false);
   }
 

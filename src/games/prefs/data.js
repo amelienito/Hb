@@ -28,6 +28,30 @@ export const DILEMMAS = [
     b: ['Le Thanos de Josh Brolin', { V: 1, F: -1, C: 0.5 }, 'Inévitable. Le seul méchant avec un plan de retraite.'] },
   { a: ['Que Tony soit encore vivant', { S: 1, M: 0.5 }, '« Je suis Iron Man. » Tu ne t’en es jamais remis, et c’est normal.'],
     b: ['Que Steve n’ait jamais rendu le bouclier', { S: -1 }, 'La danse avec Peggy était méritée. Mais quand même.'] },
+  { a: ['Voler avec les ailes de Falcon', { S: -0.5, C: -0.5 }, 'Sam Wilson : il a hérité du bouclier et des embouteillages aériens.'],
+    b: ['Voler avec la cape de Doctor Strange', { C: 1, F: -0.5 }, 'Elle a son caractère. Parfois, elle décide à ta place.'] },
+  { a: ['Avoir Groot comme coloc', { C: 1, F: 0.5 }, 'Trois mots de vocabulaire, zéro dispute sur la vaisselle.'],
+    b: ['Avoir Wong comme coloc', { C: 0.5, F: 1 }, 'Il garde la bibliothèque, écoute Beyoncé et note tes retards.'] },
+  { a: ['Rétrécir comme Ant-Man', { C: -0.5, F: 1 }, 'Parfait pour finir les miettes au fond du paquet. Talya approuve.'],
+    b: ['Grandir comme Giant-Man', { C: -0.5, F: 0.5, V: 0.5 }, 'Plus jamais besoin d’escabeau. Plus jamais de porte non plus.'] },
+  { a: ['Avoir Hulk comme garde du corps', { S: -0.5, F: 0.5 }, 'Personne ne te double dans la file. Personne ne reste dans la file, d’ailleurs.'],
+    b: ['Avoir Vision comme garde du corps', { C: 0.5, F: -0.5 }, 'Il traverse les murs et te cuisine un paprikash très discutable.'] },
+  { a: ['Une journée dans la sitcom de Wanda', { V: 0.5, C: 0.5, F: -0.5 }, 'En noir et blanc, rires enregistrés. Puis ça se gâte.'],
+    b: ['Une journée de bureau à la TVA', { C: 1, F: 0.5 }, 'Moquette des années 70, file d’attente infinie, et Miss Minutes qui surveille.'] },
+  { a: ['Être le meilleur ami de Peter Parker', { C: -1, F: 0.5 }, 'Comme Ned : l’homme dans le fauteuil, le meilleur poste du film.'],
+    b: ['Être le meilleur ami de Tony Stark', { S: 1 }, 'Comme Rhodey : une armure de prêt et des remontrances à vie.'] },
+  { a: ['Combattre aux côtés des Valkyries', { C: 0.5, V: -0.5, F: 0.5 }, 'Un pégase, une épée, et une bouteille à la main.'],
+    b: ['Combattre aux côtés des Dora Milaje', { C: -0.5, V: -0.5, F: -0.5 }, 'Pas de perruque, pas de pitié.'] },
+  { a: ['L’armure rouge et or de la Mark III', { S: 1, M: 0.5 }, 'Le classique : celle du premier vrai vol.'],
+    b: ['Le costume de Spider-Man fait maison', { C: -1, F: 0.5 }, 'Un sweat à capuche, des lunettes de soudure, et beaucoup de débrouille.'] },
+  { a: ['Une saison de Daredevil', { M: -0.5, F: -1, C: -1 }, 'Le plan-séquence du couloir. Tu as retenu ton souffle.'],
+    b: ['Une saison de Moon Knight', { C: 1, V: 0.5 }, 'Trois personnalités, un dieu égyptien, et toujours pas une nuit complète.'] },
+  { a: ['Garder le Tesseract chez toi', { C: 1, V: 0.5 }, 'Une lampe de chevet qui ouvre des portails. Et attire les ennuis.'],
+    b: ['Garder le walkman de Star-Lord', { F: 1, C: 0.5 }, 'Avec la cassette dedans. Les deux faces, en boucle.'] },
+  { a: ['Un entraînement avec Black Widow', { F: -1, C: -1 }, 'Tu ressors avec deux bleus et énormément de respect.'],
+    b: ['Un entraînement avec Shang-Chi', { C: -0.5, F: 0.5 }, 'Arts martiaux dans un bus le matin, karaoké le soir.'] },
+  { a: ['Que les X-Men débarquent enfin pour de bon', { M: -0.5, C: 0.5 }, 'Wolverine, Tornade, et soixante ans de comics à rattraper.'],
+    b: ['Que les Quatre Fantastiques aient leur trilogie', { C: 1, M: 0.5 }, 'La première famille de Marvel. Il était temps.'] },
 ];
 
 // Hot takes : [affirmation, effet si d'accord, réaction d'accord, effet si pas d'accord, réaction pas d'accord]
@@ -40,6 +64,18 @@ export const TAKES = [
   ['Les scènes après le générique, c’est sacré.', { M: 1 }, 'Tu restes jusqu’au bout, même pour un shawarma.', { M: -0.5, F: 0.5 }, 'Tu pars au générique. L’équipe de ménage te remercie.'],
   ['Les comics seront toujours meilleurs que les films.', { M: -1 }, 'Puriste assumé. Tu as un avis sur chaque numéro de 1963.', { M: 1 }, 'Le MCU t’a eu, et tu ne t’en excuses pas.'],
   ['Le multivers, il y en a un peu trop.', { M: -0.5, C: -0.5, F: -0.5 }, 'Retour aux fondamentaux. Une Terre, un Tony, ça suffisait.', { C: 1 }, 'Plus il y a de Terres, plus il y a de variantes de Talya.'],
+  ['Les Gardiens de la Galaxie Vol. 3 est le meilleur film Marvel.', { C: 1, F: 0.5 }, 'Rocket, Creep en acoustique dès la première scène. Tu as pleuré.', { C: -0.5 }, 'Trop d’émotions pour un raton laveur. C’est ton droit.'],
+  ['Iron Man, le premier, reste le meilleur film du MCU.', { S: 1, M: 0.5 }, 'Une grotte, une boîte de ferraille, et tout commence.', { S: -0.5, C: 0.5 }, 'Il a vieilli. Tony aussi, remarque.'],
+  ['Doctor Strange aurait pu sauver Tony.', { S: 1, F: -0.5 }, 'Une chance sur 14 000 605, et il l’a laissée filer.', { S: -0.5, C: 0.5 }, 'C’était la seule issue. Tu as compris le plan.'],
+  ['Des films de super-héros, on en a eu assez.', { M: -1, F: -0.5 }, 'Fatigue des super-héros. Tu as raison, et pourtant tu es là.', { M: 1 }, 'Jamais trop. Tu as déjà ton billet pour le prochain.'],
+  ['Hawkeye est l’Avenger le plus courageux.', { S: -0.5, C: -1, V: -0.5 }, 'Un arc, des flèches, et une armée d’aliens en face. Respect.', { C: 0.5, F: 0.5 }, 'Un arc contre Thanos. On va dire que c’est du courage.'],
+  ['Deadpool & Wolverine est un chef-d’œuvre.', { F: 1, M: -0.5 }, 'Tu as hurlé à chaque caméo. Les voisins aussi.', { F: -0.5 }, 'Trop de vannes, pas assez de film. Avis respectable.'],
+  ['Black Panther est le meilleur film solo du MCU.', { V: -0.5, F: -0.5, C: -0.5 }, 'Wakanda forever. Et Killmonger, le méchant qui marquait un point.', { F: 0.5, S: 0.5 }, 'Très bon, mais tu as un autre favori, et tu vas le défendre.'],
+  ['Tobey Maguire reste le meilleur Spider-Man.', { M: -0.5, F: -0.5 }, 'Le baiser à l’envers sous la pluie. Classique.', { M: 0.5, F: 0.5 }, 'Tom Holland, Andrew Garfield : tu as l’embarras du choix.'],
+  ['Loki aurait fait un meilleur grand méchant que Thanos.', { V: 1, F: 0.5 }, 'Glorieux dessein. Thanos n’avait pas sa classe.', { V: -0.5, C: 0.5 }, 'Thanos était inévitable. Loki, juste en retard.'],
+  ['La meilleure armure de Tony, c’est la Hulkbuster.', { S: 1, F: 0.5 }, 'Une armure entière pour calmer un ami. Romantique, à sa façon.', { M: 0.5, C: 0.5 }, 'La Mark 50 et ses nanotechnologies. Tu vis avec ton temps.'],
+  ['Ant-Man est le héros le plus drôle du MCU.', { F: 1, C: -0.5 }, 'Paul Rudd ne vieillit pas et ne rate jamais une vanne.', { F: 0.5, C: 1 }, 'Thor et Rocket sont là. Désolé, Scott.'],
+  ['Les Éternels méritaient mieux.', { C: 1, M: -0.5 }, 'Dix héros, sept mille ans d’histoire : un seul film, c’était trop court.', { C: -0.5, F: 0.5 }, 'Deux heures et demie de cosmos. Tu as dormi, avoue.'],
 ];
 
 export const AXES = [
@@ -75,6 +111,5 @@ export const MATCHES = [
   { name: 'Rocket', v: { F: 1, V: 0.5, C: 1 }, line: 'Mauvais caractère, cœur énorme, explosifs en option.' },
 ];
 
-// Les réponses d'Amélien, pour afficher « d'accord avec Amélien sur x sur 20 » (à remplir plus tard).
-// Format : 'a' ou 'b' pour chaque dilemme, puis 'oui' ou 'non' pour chaque hot take.
-export const AMELIEN = null;
+// Nombre de questions par partie (tirées au hasard dans chaque liste).
+export const PER_GAME = 12;

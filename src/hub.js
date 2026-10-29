@@ -8,7 +8,7 @@ import { drawBoard } from './games/reacteur/render.js';
 import { MAIN, BONUS, loadSave } from './games/reacteur/game.js';
 import { SAVE_KEY as FLAIR_KEY, COUNT as FLAIR_COUNT } from './games/flair/game.js';
 import { SAVE_KEY as CS_KEY, COUNT as CS_COUNT } from './games/chaussette/game.js';
-import { SAVE_KEY as PF_KEY } from './games/prefs/game.js';
+import { SAVE_KEY as PF_KEY, COUNTS as PF_COUNTS } from './games/prefs/game.js';
 import { SAVE_KEY as IV_KEY, COUNT as IV_COUNT } from './games/interview/game.js';
 
 let booted = false;
@@ -37,7 +37,7 @@ export function mount(root) {
   const hero = h('section', { class: 'hero' },
     h('div', { class: 'hero-top' }, h('span', { class: 'rp-tag' }, 'Joyeux anniversaire Flo'), soundButton()),
     h('div', { class: 'wordmark-wrap' }, word),
-    h('p', { class: 'tagline', html: 'Un jeu de rôle où <strong>Talya décide de tout.</strong> Comme d’habitude.' }),
+    h('p', { class: 'tagline', html: 'Un jeu où <strong>Talya décide de tout.</strong> Comme d’habitude.' }),
     h('div', { class: 'bust', html: bustSVG() }),
     h('div', { class: 'pines', html: pinesSVG() }),
     h('div', { class: 'hero-cta' },
@@ -47,6 +47,7 @@ export function mount(root) {
   const foot = h('footer', { class: 'hub-foot' },
     h('p', {}, 'Pour les 30 ans de Florian.'),
     h('p', {}, 'Conçu par Amélien, approuvé par Talya.'),
+    h('p', { class: 'osb' }, h('a', { href: 'https://amelienito.github.io/', target: '_blank', rel: 'noopener' }, 'OSB Corporation')),
   );
 
   root.append(hero, missions, musicSection(), foot);
@@ -76,12 +77,14 @@ function rivauxCard() {
   return h('a', { class: 'mission playable m-rivaux', href: '#/rivaux' },
     h('div', { class: 'm-art' },
       h('div', { class: 'm-art-inner rv-art', 'aria-hidden': 'true' },
-        h('div', { class: 'rv-card a' }, h('span', {}, 'Iron Man 3'), h('span', { class: 'v' }, '1,21 Md$')),
-        h('div', { class: 'rv-vs' }, 'OU'),
-        h('div', { class: 'rv-card b' }, h('span', {}, 'Thor : Ragnarok'), h('span', { class: 'v' }, '?')))),
+        h('p', { class: 'rv-art-q' }, 'Lequel a le plus rapporté\u00A0?'),
+        h('div', { class: 'rv-row' },
+          h('div', { class: 'rv-card a' }, h('span', {}, 'Iron Man 3'), h('span', { class: 'v' }, '1,21 Md$')),
+          h('div', { class: 'rv-vs' }, 'OU'),
+          h('div', { class: 'rv-card b' }, h('span', {}, 'Thor : Ragnarok'), h('span', { class: 'v' }, '?'))))),
     h('div', { class: 'm-body' },
       h('h3', {}, 'Rivaux Marvel'),
-      h('p', {}, 'Soixante secondes, deux choix à chaque fois, et un rival qui ne lâche rien.'),
+      h('p', {}, 'Deux films ou deux héros, une question : lequel l’emporte ? Soixante secondes pour battre ton rival.'),
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, best ? `Record ${fmt(best)}` : 'Aucun duel joué'), h('span', { class: 'm-play' }, 'Jouer'))));
 }
 
@@ -165,13 +168,15 @@ function chaussetteCard() {
     <polygon points="92,110 300,30 300,190" fill="url(#cscone)"/>
     <g transform="translate(80 110)"><ellipse cx="0" cy="0" rx="11" ry="17" fill="#3f8a52"/><circle cx="2" cy="0" r="9" fill="#3a2a20"/></g>
     <rect x="250" y="150" width="90" height="56" rx="8" fill="#8c6340"/>
-    <g transform="translate(330 70) rotate(-25)"><path d="M-6 -16h12v18q12 2 10 10q-4 6-14 2l-8-6z" fill="#e9e4da"/><rect x="-6" y="-16" width="12" height="4" fill="#c0533b"/></g>
+    <g transform="translate(325 62)"><circle r="20" fill="#c9ced3"/><path d="M0 0L18 -9A20 20 0 0 1 20 3z" fill="#a0dcff" opacity=".6"/><circle r="9" fill="#d23c2c"/><circle r="3" fill="#1b1816"/></g>
+    <g transform="translate(200 128) rotate(-12) scale(.8)"><rect x="-17" y="-22" width="34" height="44" fill="#f1ebdf"/><rect x="-17" y="-22" width="34" height="10" fill="#1d1a16"/><rect x="-12" y="-7" width="24" height="22" fill="#c8362b"/></g>
+    <g transform="translate(372 118) rotate(18) scale(.8)"><rect x="-15" y="-15" width="30" height="30" rx="6" fill="#ffd23f"/><circle r="6" fill="none" stroke="#1d1a16" stroke-width="3.5"/></g>
   </svg>`;
   return h('a', { class: 'mission playable m-chaussette', href: '#/chaussette' },
     h('div', { class: 'm-art', html: art }),
     h('div', { class: 'm-body' },
-      h('h3', {}, 'Opération chaussette'),
-      h('p', {}, 'Voler toutes les chaussettes de l’appartement sans croiser le regard de Florian. Puis rentrer au panier, l’air de rien.'),
+      h('h3', {}, 'Opération Osmose'),
+      h('p', {}, 'Voler les CD de Seta, les magazines et les stickers Osmose sans croiser le regard de Florian. Puis rentrer au panier, l’air de rien.'),
       h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, p ? `Niveaux : ${p}` : `${CS_COUNT} niveaux`), h('span', { class: 'm-play' }, p ? 'Continuer' : 'Jouer'))));
 }
 
@@ -182,8 +187,8 @@ function prefsCard() {
       h('div', { class: 'x' }, 'L’armure Mark 85'), h('div', { class: 'o' }, 'OU'), h('div', { class: 'y' }, 'Soulever Mjolnir'))),
     h('div', { class: 'm-body' },
       h('h3', {}, 'Tu préfères ?'),
-      h('p', {}, '12 dilemmes Marvel et 8 hot takes. À la fin, ton profil de fan, à défendre devant Amélien.'),
-      h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, last && last.match ? `Avenger intérieur : ${last.match}` : '20 questions'), h('span', { class: 'm-play' }, last ? 'Rejouer' : 'Jouer'))));
+      h('p', {}, 'Dilemmes Marvel ou hot takes, à toi de choisir. À la fin, ton profil de fan, à défendre devant Amélien.'),
+      h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, last && last.match ? `Avenger intérieur : ${last.match}` : `${PF_COUNTS.dilemmas} dilemmes, ${PF_COUNTS.takes} hot takes`), h('span', { class: 'm-play' }, last ? 'Rejouer' : 'Jouer'))));
 }
 
 function interviewCard() {

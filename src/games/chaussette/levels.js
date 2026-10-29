@@ -1,4 +1,5 @@
-// Niveaux d'Opération chaussette. Chaque niveau est vérifié faisable par tools/check-chaussette.mjs.
+// Niveaux d'Opération Osmose. Chaque niveau est vérifié faisable par tools/check-chaussette.mjs,
+// en mode normal et en mode difficile (où « hard » ajoute Arnaud).
 // Coordonnées des patrouilles en cases (x vers la droite, y vers le bas).
 export const LEVELS = [
   {
@@ -75,6 +76,7 @@ export const LEVELS = [
       {"name": "Florian", "path": [[1, 6], [11, 6]], "speed": 1.7, "pause": 0.81, "range": 5, "glance": 0, "fov": 83, "phase": 2.13},
       {"name": "Amélien", "path": [[4, 11], [11, 11]], "speed": 1.18, "pause": 1.82, "hair": "#141110", "skin": "#6b4630", "shirt": "#3d6f8f", "glance": 4.4, "range": 5.35, "fov": 83, "phase": 5.59},
     ],
+    hard: [{"name": "Arnaud", "skin": "#efcfb0", "hair": "#141212", "shirt": "#b0443a", "path": [[6, 10], [6, 13]], "speed": 1.26, "pause": 1.59, "glance": 0, "range": 4.77, "fov": 85, "phase": 4.64}],
   },
   {
     name: 'Le bureau',
@@ -98,13 +100,14 @@ export const LEVELS = [
       '#############',
     ],
     guards: [
-      {"name": "Florian", "at": [6, 9], "scan": [0, 90, 180, 270], "hold": 2.38, "turn": 0.86, "range": 5.31, "fov": 81, "phase": 3.8},
-      {"name": "Amélien", "path": [[1, 5], [11, 5], [11, 1], [6, 1]], "speed": 1.2, "pause": 1.1, "hair": "#141110", "skin": "#6b4630", "shirt": "#3d6f8f", "glance": 5.2, "range": 4.81, "fov": 74, "phase": 2.52},
+      {"name": "Florian", "at": [6, 10], "scan": [0, 90, 180], "hold": 1.79, "turn": 0.51, "range": 6.55, "fov": 84, "phase": 1.58},
+      {"name": "Amélien", "path": [[1, 5], [11, 5]], "speed": 1.14, "pause": 0.65, "hair": "#141110", "skin": "#6b4630", "shirt": "#3d6f8f", "glance": 3.6, "range": 6.49, "fov": 84, "phase": 4.29},
     ],
+    hard: [{"name": "Arnaud", "skin": "#efcfb0", "hair": "#141212", "shirt": "#b0443a", "path": [[1, 1], [4, 1]], "speed": 1.45, "pause": 1.79, "glance": 4.4, "range": 4.82, "fov": 80, "phase": 3.08}],
   },
   {
     name: 'Le grand appartement',
-    hint: 'La chaussette porte-bonheur de Florian est quelque part. Florian, Amélien et Kahina veillent. Kahina a du flair, elle aussi.',
+    hint: 'Le tout premier numéro d’Osmose est caché quelque part. Florian, Amélien et Kahina veillent. Kahina a du flair, elle aussi.',
     map: [
       '#############',
       '#c..#....#..#',
@@ -131,5 +134,19 @@ export const LEVELS = [
       {"name": "Amélien", "path": [[7, 11], [7, 14]], "speed": 1.43, "pause": 0.86, "hair": "#141110", "skin": "#6b4630", "shirt": "#3d6f8f", "glance": 4.4, "range": 6.84, "fov": 90, "phase": 5.4},
       {"name": "Kahina", "kind": "dog", "at": [8, 4], "scan": [180, 225, 270, 225], "hold": 2, "turn": 0.52, "range": 5.2, "fov": 95, "phase": 1.17},
     ],
+    hard: [{"name": "Arnaud", "skin": "#efcfb0", "hair": "#141212", "shirt": "#b0443a", "path": [[9, 11], [9, 16]], "speed": 1.13, "pause": 1.54, "glance": 0, "range": 4.47, "fov": 84, "phase": 5.82}],
   },
 ];
+
+// Le butin : CD de la mixtape Seta, magazines Osmose, stickers Osmose.
+export const LOOT = {
+  cd: { one: 'un CD de Seta', name: 'CD de Seta' },
+  mag: { one: 'un Osmose', name: 'magazine Osmose' },
+  sticker: { one: 'un sticker Osmose', name: 'sticker Osmose' },
+};
+export const lootKind = (n, k) => ['cd', 'mag', 'sticker'][(n + k) % 3];
+
+// Les gardes du niveau selon le mode : Arnaud ne vient qu'en difficile.
+export function levelFor(L, mode) {
+  return mode === 'difficile' && L.hard ? { ...L, guards: [...L.guards, ...L.hard] } : L;
+}

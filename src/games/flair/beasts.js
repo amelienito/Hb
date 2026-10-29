@@ -4,7 +4,7 @@ import { rng, lineOfSight, moveCircle } from '../../core/topdown.js';
 
 // Contenu de chaque affaire (même ordre que CASES)
 export const THREATS = [
-  { hedgehog: 2, fox: 0, wasps: 0, skunk: 0, boar: 0, treats: 3, bones: 3, nose: 0 },
+  { hedgehog: 1, fox: 0, wasps: 0, skunk: 0, boar: 0, treats: 2, bones: 2, nose: 0 },
   { hedgehog: 2, fox: 1, wasps: 1, skunk: 0, boar: 0, treats: 3, bones: 3, nose: 1 },
   { hedgehog: 2, fox: 1, wasps: 2, skunk: 1, boar: 0, treats: 4, bones: 3, nose: 1 },
   { hedgehog: 2, fox: 2, wasps: 2, skunk: 1, boar: 1, treats: 4, bones: 3, nose: 1 },

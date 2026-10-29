@@ -24,15 +24,15 @@ export const OBJECTS = {
 
 // Affaires : la cible, son odeur, les fausses pistes et la difficulté.
 export const CASES = [
-  { name: 'La balle', seed: 11, w: 18, h: 28, target: 'ball', scent: ['dot', '#ffc94d'], decoys: [], gaps: 0,
+  { name: 'La balle', seed: 11, w: 18, h: 26, target: 'ball', scent: ['dot', '#ffc94d'], decoys: [], gaps: 0, trees: 0.7,
     intro: 'Talya a perdu sa balle. Elle sait exactement où elle est. Enfin, son nez le sait.',
-    hint: 'Maintiens Flairer pour voir les odeurs et suis les ronds dorés. Les hérissons piquent : contourne-les.' },
+    hint: 'Touche Flairer : les odeurs apparaissent 3 secondes. Suis les ronds dorés, et contourne le hérisson.' },
   { name: 'Les clés', seed: 23, w: 20, h: 30, target: 'keys', scent: ['diamond', '#6fe3ff'], decoys: [['sausage', 'tri', '#ff7aa8']], gaps: 0,
     intro: 'Florian cherche ses clés depuis vingt minutes. Talya, elle, a déjà une idée.',
     hint: 'Suis les losanges bleus. Le renard court moins vite que toi, sauf quand tu flaires. Les buissons te cachent.' },
   { name: 'Le goûter', seed: 37, w: 20, h: 32, target: 'sandwich', scent: ['square', '#b6f25a'], decoys: [['cone', 'dot', '#ffc94d'], ['glove', 'star', '#c69bff']], gaps: 0,
     intro: 'Quelqu’un a caché un goûter dans la forêt. Talya considère que c’est un cadeau.',
-    hint: 'Flaire par petites bouffées, évite les guêpes, et ne flaire surtout pas dans le nuage de la moufette.' },
+    hint: 'Économise tes flairs, évite les guêpes, et ne flaire surtout pas dans le nuage de la moufette.' },
   { name: 'La chaussette', seed: 41, w: 22, h: 34, target: 'sock', scent: ['star', '#c69bff'], decoys: [['bone', 'square', '#b6f25a'], ['sausage', 'tri', '#ff7aa8'], ['glove', 'diamond', '#6fe3ff']], gaps: 1,
     intro: 'Une chaussette a disparu. Talya a un alibi, mais elle veut quand même la retrouver.',
     hint: 'La piste s’efface au ruisseau, elle reprend plus loin. Un sanglier gratte le sol avant de charger : écarte-toi.' },
@@ -72,8 +72,8 @@ function tryBuild(c, seed) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const v = n1(x, y) * 0.7 + n2(x, y) * 0.3 + (R() - 0.5) * 0.18;
     if (x === 0 || y === 0 || x === w - 1 || y === h - 1) put(x, y, 'T');
-    else if (v > 0.62) put(x, y, 'T');
-    else if (v > 0.57) put(x, y, R() < 0.25 ? 'R' : 'b');
+    else if (v > (c.trees || 0.62)) put(x, y, 'T');
+    else if (v > (c.trees || 0.62) - 0.05) put(x, y, R() < 0.25 ? 'R' : 'b');
     else if (v < 0.2) put(x, y, ',');
   }
   // un ruisseau qui traverse la forêt pour les affaires avec des trous dans la piste
@@ -137,6 +137,17 @@ function tryBuild(c, seed) {
     if (!path) return null;
     for (let y = spot[1] - 1; y <= spot[1] + 1; y++) for (let x = spot[0] - 1; x <= spot[0] + 1; x++) if (x > 0 && y > 0 && x < w - 1 && y < h - 1 && at(x, y) !== '~') put(x, y, ',');
     decoys.push({ obj, shape, color, at: spot, cells: path });
+  }
+
+  // les pistes passent par des couloirs dégagés : plus d'arbre ni de rocher collé à une piste,
+  // pour qu'on ne bute pas sur un tronc en suivant une odeur (vrai pour toutes les pistes, fausses comprises)
+  for (const cells of [main, ...decoys.map(d => d.cells)]) {
+    for (const [x, y] of cells) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx <= 0 || ny <= 0 || nx >= w - 1 || ny >= h - 1) continue;
+      const t = at(nx, ny);
+      if (t === 'T' || t === 'R') put(nx, ny, '.');
+    }
   }
 
   const trails = [

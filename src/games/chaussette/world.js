@@ -1,4 +1,4 @@
-// Moteur pur d'Opération chaussette : carte, patrouilles, vision. Aucun accès au DOM,
+// Moteur pur d'Opération Osmose : carte, patrouilles, vision. Aucun accès au DOM,
 // pour que le jeu et le solveur (tools/check-chaussette.mjs) partagent exactement les mêmes règles.
 //
 // Légende des cartes
@@ -7,7 +7,7 @@
 //   b  lit : idem
 //   s  canapé : bloque le passage, pas la vue      p  plante : idem
 //   k  plan de travail, w  armoire : bloquent le passage et la vue
-//   c  chaussette à voler          D  panier de Talya (départ et arrivée)
+//   c  objet à voler (CD, magazine ou sticker)   D  panier de Talya (départ et arrivée)
 
 import { castRay, lineOfSight } from '../../core/topdown.js';
 

@@ -1,7 +1,7 @@
 // Rivaux Marvel : 60 secondes de duels « lequel des deux ? » contre un fantôme.
 // La difficulté monte avec la série : plus tu enchaînes, plus les écarts se resserrent.
 import { h, backButton, soundButton, sheet, fmt, buzz, reducedMotion } from '../../core/ui.js';
-import { nextMissionButton } from '../../core/nav.js';
+import { gameBar, nextMissionButton } from '../../core/nav.js';
 import { get, set } from '../../core/store.js';
 import { sfx } from '../../core/sound.js';
 import { FILMS, HEROES, FAMILIES, MCU_DEBUTS, CAST, RT, RT_TOL, OPENING, PHASE, CREDITS, CHRONO, STONES, APPEARANCES } from './data.js';
@@ -167,7 +167,7 @@ export function mount(root) {
   const save = get('rivaux', {});
   const ghost = save.ghost && save.ghost.tl ? save.ghost : defaultGhost();
 
-  root.append(h('header', { class: 'g-bar' }, backButton(), h('div', { class: 'g-title' }, 'Rivaux Marvel'), soundButton()));
+  root.append(gameBar('rivaux', 'Rivaux Marvel', soundButton()));
   const body = h('div', { class: 'rv-body', style: 'display:flex;flex-direction:column;flex:1' });
   root.append(body);
 
