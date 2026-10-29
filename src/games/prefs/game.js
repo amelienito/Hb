@@ -1,22 +1,23 @@
-// « Tu préfères ? » : au choix, des dilemmes Marvel ou des hot takes, puis un profil de fan.
+// « Tu préfères ? » : au choix, des dilemmes Marvel légers ou cornéliens, puis un profil de fan.
 import { h, soundButton, buzz, reducedMotion } from '../../core/ui.js';
 import { gameBar, nextMissionButton } from '../../core/nav.js';
 import { get, set } from '../../core/store.js';
 import { sfx } from '../../core/sound.js';
-import { DILEMMAS, TAKES, AXES, TRAITS, MATCHES, PER_GAME } from './data.js';
+import { DILEMMAS, CORNELIENS, AXES, TRAITS, MATCHES, PER_GAME } from './data.js';
 
 export const SAVE_KEY = 'prefs';
-export const COUNTS = { dilemmas: DILEMMAS.length, takes: TAKES.length };
+export const COUNTS = { dilemmas: DILEMMAS.length, corneliens: CORNELIENS.length };
+const DECKS = { d: DILEMMAS, c: CORNELIENS };
 
-// Les deux effets possibles d'une question : [si a / oui, si b / non]
-const effects = q => q.kind === 'd' ? [DILEMMAS[q.i].a[1], DILEMMAS[q.i].b[1]] : [TAKES[q.i][1], TAKES[q.i][3]];
+// Les deux effets possibles d'une question : [si a, si b]
+const effects = q => [DECKS[q.kind][q.i].a[1], DECKS[q.kind][q.i].b[1]];
 
-// answers : [{ kind: 'd' | 't', i, val }] — seules les questions jouées comptent.
+// answers : [{ kind: 'd' | 'c', i, val }] — seules les questions jouées comptent.
 export function profileOf(answers) {
   const score = { S: 0, C: 0, M: 0, V: 0, F: 0 }, max = { S: 0, C: 0, M: 0, V: 0, F: 0 };
   for (const q of answers) {
     const [x, y] = effects(q);
-    const eff = (q.val === 'a' || q.val === 'oui') ? x : y;
+    const eff = q.val === 'a' ? x : y;
     // chaque réponse compte par rapport à la moyenne des deux options : un choix « neutre » ne pousse nulle part
     for (const k in score) {
       score[k] += (eff[k] || 0) - ((x[k] || 0) + (y[k] || 0)) / 2;
@@ -42,7 +43,7 @@ export function profileOf(answers) {
 
 // Tirage au hasard, en évitant si possible les questions de la partie précédente.
 function draw(kind, n, avoid = []) {
-  const total = kind === 'd' ? DILEMMAS.length : TAKES.length;
+  const total = DECKS[kind].length;
   const idx = [...Array(total).keys()];
   for (let k = idx.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [idx[k], idx[j]] = [idx[j], idx[k]]; }
   const fresh = idx.filter(i => !avoid.includes(i)), old = idx.filter(i => avoid.includes(i));
@@ -73,8 +74,8 @@ export function mount(root) {
       h('h1', {}, 'Tu', h('br'), 'préfères\u00A0?'),
       h('p', { class: 'lead' }, 'Pas de bonne réponse, seulement des réponses défendables. Choisis ton terrain :'),
       h('div', { class: 'pf-modes' },
-        modeBtn('d', 'Tu préfères…', `${PER_GAME} dilemmes Marvel, deux choix à chaque fois.`),
-        modeBtn('t', 'Hot takes', `${PER_GAME} avis tranchés : d’accord ou pas d’accord\u202F?`)),
+        modeBtn('d', 'Tu préfères…', `${PER_GAME} dilemmes Marvel, légers : deux choix à chaque fois.`),
+        modeBtn('c', 'Dilemmes cornéliens', `${PER_GAME} choix qui font mal : sacrifices, trahisons et adieux.`)),
       h('p', { class: 'pf-note' }, 'À la fin, ton profil de fan. À capturer et à envoyer à Amélien, qui aura forcément un avis. Les questions changent à chaque partie.'),
       last && last.title ? h('p', { class: 'pf-last' }, 'Dernier profil : ', h('b', {}, last.title)) : null));
   }
@@ -83,24 +84,14 @@ export function mount(root) {
     locked = false;
     clearTimeout(timer);
     body.innerHTML = '';
-    const q = list[i], isTake = q.kind === 't';
+    const q = list[i], d = DECKS[q.kind][q.i];
     const head = h('div', { class: 'pf-head' },
-      h('span', {}, isTake ? 'Hot take' : 'Tu préfères…'),
+      h('span', {}, q.kind === 'c' ? 'Dilemme cornélien' : 'Tu préfères…'),
       h('span', { class: 'pf-count' }, `${i + 1} / ${list.length}`));
     const bar = h('div', { class: 'pf-bar' }, h('i', { style: `width:${(i / list.length) * 100}%` }));
     const react = h('p', { class: 'pf-react', 'aria-live': 'polite' });
-    let a, b;
-    if (!isTake) {
-      const d = DILEMMAS[q.i];
-      a = choice('a', d.a[0], 'pf-a');
-      b = choice('b', d.b[0], 'pf-b');
-      body.append(head, bar, h('div', { class: 'pf-choices' }, a, h('div', { class: 'pf-or' }, 'ou'), b), react);
-    } else {
-      const t = TAKES[q.i];
-      a = choice('oui', 'D’accord', 'pf-yes');
-      b = choice('non', 'Pas d’accord', 'pf-no');
-      body.append(head, bar, h('blockquote', { class: 'pf-take' }, t[0]), h('div', { class: 'pf-votes' }, a, b), react);
-    }
+    const a = choice('a', d.a[0], 'pf-a'), b = choice('b', d.b[0], 'pf-b');
+    body.append(head, bar, h('div', { class: 'pf-choices' }, a, h('div', { class: 'pf-or' }, 'ou'), b), react);
 
     function choice(val, label, cls) {
       return h('button', { class: 'pf-choice ' + cls, type: 'button', onclick: () => pick(val) }, h('span', {}, label));
@@ -110,9 +101,9 @@ export function mount(root) {
       locked = true;
       answers[i] = { ...q, val };
       sfx.right(i % 6); buzz(10);
-      const mine = (val === 'a' || val === 'oui') ? a : b, other = mine === a ? b : a;
+      const mine = val === 'a' ? a : b, other = mine === a ? b : a;
       mine.classList.add('picked'); other.classList.add('dropped');
-      react.textContent = isTake ? (val === 'oui' ? TAKES[q.i][2] : TAKES[q.i][4]) : DILEMMAS[q.i][val][2];
+      react.textContent = d[val][2];
       react.classList.add('on');
       const next = h('button', { class: 'btn ghost pf-next', type: 'button', onclick: go }, i + 1 < list.length ? 'Suivant' : 'Voir mon profil');
       body.append(next);
@@ -128,7 +119,7 @@ export function mount(root) {
     set(SAVE_KEY, { title: p.title, match: p.match.name, mode, seen });
     sfx.win();
     body.innerHTML = '';
-    const other = mode === 'd' ? 't' : 'd';
+    const other = mode === 'd' ? 'c' : 'd';
     body.append(h('div', { class: 'pf-result' },
       h('p', { class: 'pf-kicker' }, 'Profil de fan de Florian, 30 ans'),
       h('h2', {}, cap(p.title) + '.'),
@@ -144,7 +135,7 @@ export function mount(root) {
       })),
       h('p', { class: 'pf-agree' }, 'Fais une capture d’écran et envoie-la à Amélien. Il a sûrement des objections.'),
       h('div', { class: 'actions' },
-        h('button', { class: 'btn', type: 'button', onclick: () => start(other) }, other === 't' ? 'Passer aux hot takes' : 'Passer aux dilemmes'),
+        h('button', { class: 'btn', type: 'button', onclick: () => start(other) }, other === 'c' ? 'Passer aux dilemmes cornéliens' : 'Passer aux dilemmes légers'),
         nextMissionButton('prefs'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => start(mode) }, 'Rejouer avec d’autres questions'),
         h('a', { class: 'btn ghost', href: '#/missions' }, 'Retour aux missions'))));

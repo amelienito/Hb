@@ -10,7 +10,7 @@ En ligne : https://amelienito.github.io/Hb/
 - **Rivaux Marvel** : duel de 60 secondes contre un fantôme (box-office, durées, sorties, casting, comics, arrivées dans le MCU).
 - **Flair** : enquête au nez dans une forêt de nuit, 5 affaires. Chaque appui sur « Flairer » montre les odeurs 3 secondes, avec 30, 20 ou 10 flairs par affaire selon le mode (facile, normal, difficile). Mode gaucher·e pour mettre le bouton à gauche. Hérissons, renards, guêpes, moufettes et sangliers.
 - **Opération Osmose** (dossier `chaussette`) : infiltration, 5 niveaux. Voler les CD de Seta, les magazines et les stickers Osmose sans entrer dans le champ de vision, puis rentrer au panier. Reprise au dernier objet volé (à un moment calme de la ronde), modes facile, normal et difficile ; en difficile, Arnaud rejoint les niveaux 3 à 5.
-- **Tu préfères ?** : au choix, des dilemmes Marvel (24) ou des hot takes (20), 12 tirés au hasard par partie, puis un profil de fan. Textes dans `src/games/prefs/data.js`.
+- **Tu préfères ?** : au choix, des dilemmes Marvel légers (24) ou cornéliens (20), 12 tirés au hasard par partie, puis un profil de fan. Textes dans `src/games/prefs/data.js`.
 - **L'interview** : entretien façon magazine, Amélien pose 14 questions, Talya répond en woofs (un mot = un woof). Textes dans `src/games/interview/data.js` : chaque réponse « en clair » sert de patron et n'est jamais affichée.
 
 ## Organisation

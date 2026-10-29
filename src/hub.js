@@ -187,8 +187,8 @@ function prefsCard() {
       h('div', { class: 'x' }, 'L’armure Mark 85'), h('div', { class: 'o' }, 'OU'), h('div', { class: 'y' }, 'Soulever Mjolnir'))),
     h('div', { class: 'm-body' },
       h('h3', {}, 'Tu préfères ?'),
-      h('p', {}, 'Dilemmes Marvel ou hot takes, à toi de choisir. À la fin, ton profil de fan, à défendre devant Amélien.'),
-      h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, last && last.match ? `Avenger intérieur : ${last.match}` : `${PF_COUNTS.dilemmas} dilemmes, ${PF_COUNTS.takes} hot takes`), h('span', { class: 'm-play' }, last ? 'Rejouer' : 'Jouer'))));
+      h('p', {}, 'Des dilemmes Marvel, légers ou cornéliens, à toi de choisir. À la fin, ton profil de fan, à défendre devant Amélien.'),
+      h('div', { class: 'm-foot' }, h('span', { class: 'm-progress' }, last && last.match ? `Avenger intérieur : ${last.match}` : `${PF_COUNTS.dilemmas + PF_COUNTS.corneliens} dilemmes`), h('span', { class: 'm-play' }, last ? 'Rejouer' : 'Jouer'))));
 }
 
 function interviewCard() {
