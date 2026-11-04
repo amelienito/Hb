@@ -81,6 +81,11 @@ button { font: inherit; color: inherit; }
   display: flex; flex-direction: column;
 }
 .hero-top { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 3; }
+/* le retour aux créations d'Amélien (le hub) */
+.hero-gauche { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.retour-hub { flex: none; padding: 7px 11px; border-radius: 999px; border: 1px solid rgba(241,243,238,.25); color: rgba(241,243,238,.75); font-size: 13px; font-weight: 700; letter-spacing: .06em; text-decoration: none; transition: color .2s, border-color .2s, background .2s; }
+.retour-hub:hover { color: var(--pelage); border-color: rgba(241,243,238,.6); background: rgba(241,243,238,.08); }
+@media (max-width: 480px) { .retour-hub span { display: none; } .retour-hub { padding: 7px 10px; } }
 .rp-tag {
   font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: .02em; line-height: 1;
   padding: 7px 12px 6px; border-radius: 8px;

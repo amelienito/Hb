@@ -35,7 +35,11 @@ export function mount(root) {
   );
 
   const hero = h('section', { class: 'hero' },
-    h('div', { class: 'hero-top' }, h('span', { class: 'rp-tag' }, 'Joyeux anniversaire Flo'), soundButton()),
+    h('div', { class: 'hero-top' },
+      h('div', { class: 'hero-gauche' },
+        h('a', { class: 'retour-hub', href: 'https://amelienito.github.io/#hb', 'aria-label': 'Retour aux créations d’Amélien', title: 'Retour aux créations d’Amélien' }, '←', h('span', {}, ' OSB')),
+        h('span', { class: 'rp-tag' }, 'Joyeux anniversaire Flo')),
+      soundButton()),
     h('div', { class: 'wordmark-wrap' }, word),
     h('p', { class: 'tagline', html: 'Un jeu où <strong>Talya décide de tout.</strong> Comme d’habitude.' }),
     h('div', { class: 'bust', html: bustSVG() }),
@@ -47,7 +51,7 @@ export function mount(root) {
   const foot = h('footer', { class: 'hub-foot' },
     h('p', {}, 'Pour les 30 ans de Florian.'),
     h('p', {}, 'Conçu par Amélien, approuvé par Talya.'),
-    h('p', { class: 'osb' }, h('a', { href: 'https://amelienito.github.io/', target: '_blank', rel: 'noopener' }, 'OSB Corporation')),
+    h('p', { class: 'osb' }, h('a', { href: 'https://amelienito.github.io/#hb' }, 'OSB Corporation')),
   );
 
   root.append(hero, missions, musicSection(), foot);
