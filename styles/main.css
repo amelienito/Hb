@@ -83,7 +83,8 @@ button { font: inherit; color: inherit; }
 .hero-top { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 3; }
 /* le retour aux créations d'Amélien (le hub) */
 .hero-gauche { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.retour-hub { flex: none; padding: 7px 11px; border-radius: 999px; border: 1px solid rgba(241,243,238,.25); color: rgba(241,243,238,.75); font-size: 13px; font-weight: 700; letter-spacing: .06em; text-decoration: none; transition: color .2s, border-color .2s, background .2s; }
+.retour-hub { position: relative; flex: none; padding: 7px 11px; border-radius: 999px; border: 1px solid rgba(241,243,238,.25); color: rgba(241,243,238,.75); font-size: 13px; font-weight: 700; letter-spacing: .06em; text-decoration: none; transition: color .2s, border-color .2s, background .2s; }
+.retour-hub::after { content: ""; position: absolute; inset: -9px -6px; }
 .retour-hub:hover { color: var(--pelage); border-color: rgba(241,243,238,.6); background: rgba(241,243,238,.08); }
 @media (max-width: 480px) { .retour-hub span { display: none; } .retour-hub { padding: 7px 10px; } }
 .rp-tag {
