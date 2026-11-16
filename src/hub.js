@@ -37,7 +37,7 @@ export function mount(root) {
   const hero = h('section', { class: 'hero' },
     h('div', { class: 'hero-top' },
       h('div', { class: 'hero-gauche' },
-        h('a', { class: 'retour-hub', href: 'https://amelienito.github.io/#hb', 'aria-label': 'Retour aux créations d’Amélien', title: 'Retour aux créations d’Amélien' }, '←', h('span', {}, ' OSB')),
+        h('a', { class: 'retour-hub', href: 'https://amelienito.github.io/#hb', 'aria-label': 'Retour chez OSB Corporation, vers les autres jeux', title: 'OSB Corporation : les autres jeux' }, '←', h('span', {}, ' OSB')),
         h('span', { class: 'rp-tag' }, 'Joyeux anniversaire Flo')),
       soundButton()),
     h('div', { class: 'wordmark-wrap' }, word),
@@ -54,6 +54,8 @@ export function mount(root) {
     h('p', { class: 'osb' }, h('a', { href: 'https://amelienito.github.io/#hb' }, 'OSB Corporation')),
   );
 
+  // en bas de page : « Un retour ? Un commentaire ? Un bug à partager ? » et les autres jeux (osb.js, le fichier commun aux jeux d'OSB Corporation)
+  if (window.OSB) window.OSB.pied(foot, { ici: 'rp-talya', contexte: 'accueil' });
   root.append(hero, missions, musicSection(), foot);
   if (location.hash === '#/missions') missions.scrollIntoView();
 
